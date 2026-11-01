@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torneo Sociale TC Salemi</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#1c2420;--mut:#6b756f;--line:#d5dbd8;--acc:#1f6b45;--acc2:#e8f3ec;--warn:#b45309;--win:#d6efd9}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+header{background:#1c2420;color:#fff;padding:10px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header img#logo{height:36px;background:#fff;border-radius:8px;padding:3px}
+header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.2px}
+nav{display:flex;gap:4px;flex:1}
+nav button{white-space:nowrap;background:transparent;color:#cfd8d3;border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px}
+nav button.on{background:var(--acc);color:#fff}
+nav button:hover:not(.on){background:#2d3833}
+.right{display:flex;gap:8px}
+button.b{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:14px}
+button.b:hover{filter:brightness(1.1)}
+button.g{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font-size:14px}
+button.g:hover{background:#f0f3f1}
+button.r{background:#fff;color:#a32020;border:1px solid #e3b5b5;border-radius:6px;padding:7px 12px;cursor:pointer}
+main{padding:16px 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--mut)}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--acc2);color:var(--acc)}
+.tag.w{background:#fdf0dc;color:var(--warn)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 8px;border-bottom:1px solid #eceeed;text-align:left;vertical-align:middle}
+th{font-size:12px;text-transform:uppercase;color:var(--mut);letter-spacing:.4px;background:#fafbfa}
+tr.off td{opacity:.45}
+input[type=text],select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#fff}
+input.cl{width:70px}
+.bracket{display:flex;gap:26px;overflow:auto;padding:6px 4px 14px;align-items:stretch;min-height:300px}
+.round{display:flex;flex-direction:column;min-width:240px}
+.round h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+.matches{flex:1;display:flex;flex-direction:column;justify-content:space-around}
+.match{border:1px solid var(--line);border-radius:8px;background:#fff;margin:5px 0;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.pl{display:flex;justify-content:space-between;gap:8px;padding:6px 9px;cursor:pointer;border-bottom:1px solid #f0f2f1}
+.pl:last-of-type{border-bottom:0}
+.pl:hover{background:#f4f8f5}
+.pl.win{background:var(--win);font-weight:600}
+.pl.lose{color:#98a29c}
+.pl.tbd,.pl.bye{cursor:default;color:#9aa49e;font-style:italic}
+.pl.swap{cursor:pointer}
+.pl.swap:hover{background:#fff6dc}
+.tbtn{display:inline-block;margin-left:6px;min-width:20px;text-align:center;font-size:11px;font-weight:700;border:1px solid #c9a227;color:#8a6d00;background:#fff8d6;border-radius:4px;cursor:pointer;padding:0 4px}
+.tbtn.ebtn{border-color:#3b7dd8;color:#1d4f9c;background:#e8f1ff}
+.tbtn.ebtn:hover{background:#c9defc}
+.tbtn:hover{background:#ffe27a}
+.pl.sel{background:#ffd966!important;font-weight:600}
+.editbar{background:#fff6dc;border:1px solid #e6cf7d;border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.pl .rk{color:var(--mut);font-size:12px;font-weight:400}
+.pl .sd{display:inline-block;min-width:18px;font-size:11px;background:#1c2420;color:#fff;border-radius:4px;text-align:center;margin-right:5px}
+.sc{border-top:1px dashed var(--line);padding:3px 6px;background:#fafbfa}
+.sc input{width:100%;border:0;background:transparent;font-size:12px;padding:3px 2px;outline:none}
+.champ{margin-top:10px;padding:14px 18px;border-radius:10px;background:linear-gradient(90deg,#f6e7b0,#fff3cf);border:1px solid #e6cf7d;font-size:17px;font-weight:600}
+.hero{display:flex;align-items:center;gap:22px;padding:12px 18px}
+.hero img{height:78px;max-width:60%;object-fit:contain}
+.hero .ht{font-size:22px;font-weight:600}
+.bar{height:10px;background:#e3e8e5;border-radius:99px;overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .3s}
+.hint{font-size:13px;color:var(--mut);margin:4px 0 0}
+.toast{position:fixed;right:18px;bottom:18px;background:#1c2420;color:#fff;padding:11px 16px;border-radius:8px;max-width:520px;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.toast.err{background:#a32020}
+h2{margin:0 0 8px;font-size:16px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut)}
+label.f input{font-size:14px;color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <img id="logo" src="/logo.png" alt="" onerror="this.style.display='none'">
+  <h1 id="ttl">Torneo Sociale TC Salemi</h1>
+  <nav id="nav">
+    <button data-tab="iscritti">Iscritti</button>
+    <button data-tab="class">Classifica</button>
+    <button data-tab="M">Singolare maschile</button>
+    <button data-tab="F">Singolare femminile</button>
+    <button data-tab="imp">Impostazioni</button>
+    <button data-tab="help">Guida</button>
+  </nav>
+  <div class="right">
+    <button class="b" id="pdfAll">Esporta PDF</button>
+    <button class="g" id="quit" style="background:#2d3833;color:#fff;border-color:#2d3833">Chiudi programma</button>
+  </div>
+</header>
+<main id="main"></main>
+<script>
+"use strict";
+let S = null, tab = "iscritti", filterText = "", editMode = false, swapSel = null;
+
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function toast(msg, err) {
+  document.querySelectorAll(".toast").forEach(x => x.remove());
+  const t = document.createElement("div");
+  t.className = "toast" + (err ? " err" : "");
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), err ? 6000 : 3500);
+}
+
+async function call(path, body, isForm) {
+  try {
+    const opt = body === undefined ? {} : { method: "POST", body: isForm ? body : JSON.stringify(body) };
+    const r = await fetch(path, opt);
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || "Errore", true); return null; }
+    return j;
+  } catch (e) { toast("Errore di comunicazione con il programma", true); return null; }
+}
+
+async function act(path, body) {
+  const j = await call(path, body);
+  if (j && j.players) { S = j; }
+  return j;
+}
+
+const byId = () => { const m = {}; S.players.forEach(p => m[p.id] = p); return m; };
+const fullName = p => (p.cognome + " " + p.nome).trim();
+
+function counts() {
+  const c = { M: 0, F: 0 };
+  S.players.forEach(p => { if (p.iscritto) c[p.sesso] = (c[p.sesso] || 0) + 1; });
+  return c;
+}
+
+function render() {
+  if (S) { S.players = S.players || []; S.draws = S.draws || {}; }
+  if (S.serverMode) { const q = $("#quit"); if (q) q.style.display = "none"; }
+  $("#ttl").textContent = S.title || "Torneo Sociale";
+  document.title = S.title || "Torneo Sociale";
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  const sc = { x: 0, y: 0 };
+  const br = $(".bracket"); if (br) { sc.x = br.scrollLeft; sc.y = br.scrollTop; }
+  if (tab === "iscritti") renderIscritti();
+  else if (tab === "imp") renderImp();
+  else if (tab === "help") renderHelp();
+  else if (tab === "class") renderClassifica();
+  else renderDraw(tab);
+  const br2 = $(".bracket"); if (br2) { br2.scrollLeft = sc.x; br2.scrollTop = sc.y; }
+}
+
+/* ---------------- ISCRITTI ---------------- */
+function renderIscritti() {
+  const list = S.players.slice().sort((a, b) => fullName(a).localeCompare(fullName(b), "it"));
+  const rows = list.map(p => `
+    <tr data-id="${p.id}" class="${p.iscritto ? "" : "off"}">
+      <td><input type="checkbox" class="isc" ${p.iscritto ? "checked" : ""}></td>
+      <td>${esc(p.cognome)}</td><td>${esc(p.nome)}</td>
+      <td><select class="sx"><option value="M" ${p.sesso === "M" ? "selected" : ""}>M</option><option value="F" ${p.sesso === "F" ? "selected" : ""}>F</option></select></td>
+      <td><input type="text" class="cl" value="${esc(p.classifica)}"></td>
+      <td>${esc(p.categoria)}</td><td>${esc(p.provincia)}</td>
+      <td>${warnTag(p)}</td>
+      <td><button class="r del" title="Elimina dall'elenco">&times;</button></td>
+    </tr>`).join("");
+  $("#main").innerHTML = `
+    <div class="card hero">
+      <img src="/logo.png" alt="" onerror="this.style.display='none'">
+      <div><div class="ht">${esc(S.title || "Torneo Sociale")}</div><div class="muted">${esc([S.luogo, S.date].filter(Boolean).join(" - "))}</div></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Iscritti al torneo</h2>
+        <span class="tag" id="cM"></span><span class="tag" id="cF"></span>
+        <span class="muted">Fonte: ${esc(S.source || "nessun file caricato")}</span>
+        <span style="flex:1"></span>
+        <input type="text" id="flt" placeholder="Cerca giocatore..." value="${esc(filterText)}">
+        <button class="g" id="addp">+ Aggiungi giocatore</button>
+        <button class="g" id="reload" title="Rilegge il file Excel nella cartella del programma">Ricarica da file Excel</button>
+        <button class="g" id="impb">Carica file (CSV o Excel)...</button>
+        <input type="file" id="fileIn" accept=".xlsx,.csv" style="display:none">
+      </div>
+      <div class="row" style="margin-top:10px;padding:10px 12px;background:#f1f6f3;border-radius:8px">
+        <b>Elenco da TennisCall:</b>
+        <button class="b" id="tcGo">Scarica e importa da TennisCall</button>
+        <button class="g" id="tcImp" title="Importa il CSV piu' recente trovato nella cartella Download">Importa l&rsquo;ultimo CSV scaricato</button>
+        <span class="muted">Devi essere collegato a TennisCall nel browser: il download parte da l&igrave;.</span>
+      </div>
+      <p class="hint">Togli la spunta a chi non partecipa. Il <b>sesso &egrave; stimato dal nome</b>: controllalo e correggilo se serve. La classifica pu&ograve; essere modificata a mano (4.1 &egrave; la pi&ugrave; forte, 4.NC la pi&ugrave; debole).</p>
+      <div id="addbox" style="display:none;margin-top:10px" class="row">
+        <label class="f">Nome<input type="text" id="an"></label>
+        <label class="f">Cognome<input type="text" id="ac"></label>
+        <label class="f">Classifica<input type="text" id="ak" class="cl" placeholder="4.NC"></label>
+        <label class="f">Sesso<select id="as"><option value="">auto</option><option>M</option><option>F</option></select></label>
+        <button class="b" id="addok" style="align-self:flex-end">Aggiungi</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+      <table><thead><tr><th>Gioca</th><th>Cognome</th><th>Nome</th><th>Sesso</th><th>Classifica</th><th>Cat.</th><th>Prov.</th><th>Controllo</th><th></th></tr></thead>
+      <tbody id="tb">${rows}</tbody></table>
+    </div>`;
+  updateCounts(); applyFilter();
+  $("#flt").oninput = e => { filterText = e.target.value; applyFilter(); };
+  $("#addp").onclick = () => { const b = $("#addbox"); b.style.display = b.style.display === "none" ? "flex" : "none"; };
+  $("#addok").onclick = async () => {
+    const j = await act("/api/player/add", { nome: $("#an").value, cognome: $("#ac").value, classifica: $("#ak").value, sesso: $("#as").value });
+    if (j) { toast("Giocatore aggiunto"); render(); }
+  };
+  $("#reload").onclick = async () => {
+    const j = await call("/api/sync", { force: true });
+    if (j) { S = j; toast(j.message || "Fatto"); render(); }
+  };
+  $("#tcGo").onclick = tcDownload;
+  $("#tcImp").onclick = async () => {
+    const j = await call("/api/import/downloads", {});
+    if (j) { S = j; toast(j.message || "Elenco importato"); render(); }
+  };
+  $("#impb").onclick = () => $("#fileIn").click();
+  $("#fileIn").onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const fd = new FormData(); fd.append("file", f);
+    const j = await call("/api/import", fd, true);
+    if (j) { S = j; toast(j.message || ("File caricato: ora i giocatori sono " + S.players.length)); render(); }
+  };
+  $("#tb").onchange = async e => {
+    const tr = e.target.closest("tr"); if (!tr) return;
+    const id = +tr.dataset.id; let body = { id };
+    if (e.target.classList.contains("isc")) { body.iscritto = e.target.checked; tr.classList.toggle("off", !e.target.checked); }
+    else if (e.target.classList.contains("sx")) body.sesso = e.target.value;
+    else if (e.target.classList.contains("cl")) body.classifica = e.target.value;
+    else return;
+    const j = await act("/api/player", body);
+    if (j) { updateCounts(); const p = S.players.find(x => x.id === id); const w = tr.children[7]; if (w && p) w.innerHTML = warnTag(p); }
+  };
+  $("#tb").onclick = async e => {
+    if (!e.target.classList.contains("del")) return;
+    const tr = e.target.closest("tr"); const p = S.players.find(x => x.id === +tr.dataset.id);
+    if (!confirm("Eliminare " + fullName(p) + " dall'elenco?")) return;
+    const j = await act("/api/player/delete", { id: p.id });
+    if (j) render();
+  };
+}
+function warnTag(p) {
+  const t = [];
+  if (p.esito === "DA VERIFICARE") t.push('<span class="tag w" title="' + esc(p.note) + '">da verificare</span>');
+  if (p.esito === "DA AGGIORNARE") t.push('<span class="tag w" title="' + esc(p.note) + '">da aggiornare</span>');
+  if (p.esito === "NOME MODIFICATO") t.push('<span class="tag w" title="' + esc(p.note) + '">nome modificato</span>');
+  if (p.esito && p.esito.indexOf("ERRORE") >= 0) t.push('<span class="tag w" title="' + esc(p.note) + '">errore rete</span>');
+  if (!String(p.classifica).trim()) t.push('<span class="tag w">classifica mancante</span>');
+  return t.join(" ");
+}
+function updateCounts() {
+  const c = counts();
+  if ($("#cM")) { $("#cM").textContent = "Uomini iscritti: " + (c.M || 0); $("#cF").textContent = "Donne iscritte: " + (c.F || 0); }
+}
+function applyFilter() {
+  const q = filterText.trim().toLowerCase();
+  document.querySelectorAll("#tb tr").forEach(tr => {
+    tr.style.display = !q || tr.textContent.toLowerCase().indexOf(q) >= 0 ? "" : "none";
+  });
+}
+
+/* ---------------- TABELLONE ---------------- */
+const roundNames = n => ({2:"Finale",4:"Semifinali",8:"Quarti di finale",16:"Ottavi di finale",32:"Sedicesimi",64:"Trentaduesimi"}[n] || ("Turno da " + n));
+const sexName = s => s === "M" ? "maschile" : "femminile";
+
+function defaultSeeds(n) { let size = 2; while (size < n) size *= 2; return size >= 32 ? 8 : size >= 16 ? 4 : size >= 8 ? 2 : 0; }
+
+function renderDraw(sex) {
+  const d = S.draws && S.draws[sex];
+  const n = counts()[sex] || 0;
+  const pl = byId();
+  let html = `<div class="card"><div class="row"><h2 style="margin:0">Singolare ${sexName(sex)}</h2><span class="tag">Iscritti: ${n}</span>`;
+  if (!d) {
+    const ds = defaultSeeds(n);
+    html += `<span style="flex:1"></span>
+      <label class="muted">Teste di serie
+      <select id="seeds">${[0,2,4,8].map(k => `<option value="${k}" ${k === ds ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+      <button class="b" id="doDraw">Sorteggia il tabellone</button></div>
+      <p class="hint">Le teste di serie sono i giocatori con la classifica migliore. Gli altri vengono sorteggiati a caso e i BYE vanno alle teste di serie pi&ugrave; alte.</p></div>`;
+    $("#main").innerHTML = html;
+    $("#doDraw").onclick = async () => {
+      const j = await act("/api/draw", { sex, seeds: +$("#seeds").value });
+      if (j) { toast("Tabellone sorteggiato"); render(); }
+    };
+    return;
+  }
+  html += `<span class="muted">Sorteggio del ${esc(d.created)}</span><span style="flex:1"></span>
+    <button class="g" id="pdfOne">Esporta PDF di questo tabellone</button>
+    <button class="${editMode ? "b" : "g"}" id="editB">${editMode ? "Fine modifica" : "Modifica sorteggio"}</button>
+    <button class="g" id="redo">Rifai il sorteggio</button>
+    <button class="r" id="delDraw">Elimina tabellone</button></div>
+    <p class="hint">Clicca sul nome del vincitore di ogni partita e scrivi il punteggio (es. <i>6-4 6-3</i>). Per togliere il vincitore clicca di nuovo sul suo nome. Se modifichi un risultato, quelli dei turni successivi che dipendono da lui vengono azzerati.</p></div>`;
+  if (editMode) html += '<div class="editbar"><b>Modifica sorteggio:</b> clicca un giocatore (o un BYE) nel primo turno e poi un altro per scambiarli di posto: cos&igrave; puoi spostare le teste di serie dove vuoi. Il pulsante <b>T</b> accanto al nome serve a dare, cambiare o togliere il numero di testa di serie; il pulsante <b>&#10548;</b> serve a far entrare il giocatore a un <b>turno diverso dal primo</b> (ottavi, quarti, ecc.). Se ci sono gi&agrave; risultati, quelli delle partite coinvolte vengono azzerati (con conferma).</div>';
+  html += '<div class="bracket">';
+  d.rounds.forEach((rd, r) => {
+    html += `<div class="round"><h4>${roundNames(d.size >> r)}</h4><div class="matches">`;
+    rd.forEach((m, i) => { html += matchHtml(m, r, i, pl, d); });
+    html += "</div></div>";
+  });
+  html += "</div>";
+  const fin = d.rounds[d.rounds.length - 1][0];
+  if (fin.w > 0 && pl[fin.w]) html += `<div class="champ">&#127942; Vincitore del singolare ${sexName(sex)}: ${esc(fullName(pl[fin.w]))}</div>`;
+  $("#main").innerHTML = html;
+  $("#pdfOne").onclick = () => savePdf(sex);
+  $("#editB").onclick = () => { editMode = !editMode; swapSel = null; render(); };
+  $("#redo").onclick = async () => {
+    if (!confirm("Rifare il sorteggio cancella il tabellone e tutti i risultati inseriti. Continuare?")) return;
+    const j = await act("/api/draw", { sex, seeds: defaultSeeds(n) });
+    if (j) { toast("Nuovo sorteggio fatto"); render(); }
+  };
+  $("#delDraw").onclick = async () => {
+    if (!confirm("Eliminare il tabellone e tutti i risultati?")) return;
+    const j = await act("/api/draw/delete", { sex }); if (j) render();
+  };
+  document.querySelectorAll(".ebtn").forEach(el => el.onclick = async e => {
+    e.stopPropagation();
+    const id = +el.dataset.enterid;
+    const cur = entryRound(d, id) + 1;
+    const list = d.rounds.map((_, r) => (r + 1) + " = " + roundNames(d.size >> r)).join("\n");
+    const v = prompt("A quale turno deve entrare " + fullName(pl[id]) + "?\n(ora entra al turno " + cur + ")\n\n" + list + "\n\nScrivi il numero del turno:", cur);
+    if (v === null) return;
+    const R = parseInt(v, 10);
+    if (!R) return;
+    await doEnter(sex, id, R, false);
+  });
+  document.querySelectorAll(".tbtn:not(.ebtn)").forEach(el => el.onclick = async e => {
+    e.stopPropagation();
+    const id = +el.dataset.seedid, cur = (d.seeds && d.seeds[id]) || "";
+    const v = prompt("Numero di testa di serie per " + fullName(pl[id]) + "\n(lascia vuoto per toglierla):", cur);
+    if (v === null) return;
+    const j = await act("/api/seed", { sex, id, seed: parseInt(v, 10) || 0 });
+    if (j) toast("Testa di serie aggiornata");
+    render();
+  });
+  document.querySelectorAll(".pl[data-slot]").forEach(el => el.onclick = async () => {
+    const k = +el.dataset.slot;
+    if (swapSel === null) { swapSel = k; render(); return; }
+    if (swapSel === k) { swapSel = null; render(); return; }
+    const a = swapSel; swapSel = null;
+    const n = resultsInPaths(d, a, k);
+    if (n > 0 && !confirm("Questo scambio azzera " + n + " risultat" + (n === 1 ? "o" : "i") + " gia' inserit" + (n === 1 ? "o" : "i") + " (solo delle partite coinvolte). Continuare?")) { render(); return; }
+    const j = await act("/api/swap", { sex, a, b: k, confirm: n > 0 });
+    if (j) toast("Posizioni scambiate");
+    render();
+  });
+  if (!editMode) document.querySelectorAll(".pl[data-id]").forEach(el => el.onclick = async () => {
+    const id = +el.dataset.id, r = +el.dataset.r, mi = +el.dataset.m;
+    const m = d.rounds[r][mi];
+    const j = await act("/api/result", { sex, round: r, match: mi, winner: m.w === id ? 0 : id });
+    if (j) render();
+  });
+  document.querySelectorAll(".sc input").forEach(el => el.onchange = async () => {
+    const j = await act("/api/result", { sex, round: +el.dataset.r, match: +el.dataset.m, score: el.value });
+    if (j) toast("Risultato salvato");
+  });
+}
+
+function entryRound(d, id) {
+  let s = -1;
+  d.rounds[0].forEach((m, i) => { if (m.a === id) s = 2 * i; if (m.b === id) s = 2 * i + 1; });
+  if (s < 0) return 0;
+  for (let r = 0; r < d.rounds.length; r++) {
+    const m = d.rounds[r][(s >> 1) >> r];
+    if (m.a !== -1 && m.b !== -1) return r;
+  }
+  return d.rounds.length - 1;
+}
+
+async function doEnter(sex, id, R, confirmed) {
+  let r, j;
+  try {
+    r = await fetch("/api/enter", { method: "POST", body: JSON.stringify({ sex, id, round: R, confirm: confirmed }) });
+    j = await r.json();
+  } catch (e) { toast("Errore di comunicazione con il programma", true); return; }
+  if (r.status === 409 && j.needConfirm) {
+    if (confirm("L'operazione azzera " + j.count + " risultati gia' inseriti (solo delle partite coinvolte). Continuare?")) return doEnter(sex, id, R, true);
+    return;
+  }
+  if (!r.ok) { toast(j.error || "Errore", true); return; }
+  S = j; toast(j.message || "Fatto"); render();
+}
+
+async function tcDownload() {
+  const url = S.tcUrl || "https://admin.tenniscall.com/it/tennis-center/export-customers?id=6435";
+  if (S.serverMode) {
+    window.open(url, "_blank");
+    toast("Download avviato nel tuo browser. Poi carica il file con 'Carica file (CSV o Excel)...'");
+    return;
+  }
+  await call("/api/import/baseline", {});
+  window.open(url, "_blank");
+  toast("Download da TennisCall avviato: attendo il file...");
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const j = await call("/api/import/downloads", { onlyNew: true });
+    if (!j) return;
+    if (!j.pending) { S = j; toast(j.message || "Elenco importato"); render(); return; }
+  }
+  toast("Dopo un minuto non e' comparso nessun file scaricato. Controlla nel browser se TennisCall chiede il login, poi riprova (o usa 'Importa l'ultimo CSV scaricato').", true);
+}
+
+function resultsInPaths(d, a, b) {
+  const seen = {}; let n = 0;
+  [a, b].forEach(s => d.rounds.forEach((rd, r) => {
+    const i = (s >> 1) >> r, key = r + ":" + i;
+    if (seen[key]) return; seen[key] = 1;
+    const m = rd[i]; if (m.a > 0 && m.b > 0 && m.w > 0) n++;
+  }));
+  return n;
+}
+
+function plHtml(id, m, r, i, pl, d, slot) {
+  const sw = editMode && r === 0 ? ` swap${swapSel === slot ? " sel" : ""}" data-slot="${slot}` : "";
+  if (id === -1) return `<div class="pl bye${sw}"><span>BYE</span></div>`;
+  if (id === 0 || !pl[id]) return '<div class="pl tbd"><span>da definire</span></div>';
+  const p = pl[id];
+  const cls = m.w === id ? "win" : (m.w > 0 ? "lose" : "");
+  const sd = d.seeds && d.seeds[id] ? `<span class="sd">${d.seeds[id]}</span>` : "";
+  return `<div class="pl ${cls}${sw}" data-id="${id}" data-r="${r}" data-m="${i}"><span>${sd}${esc(fullName(p))}</span><span><span class="rk">${esc(p.classifica)}</span>${editMode && r === 0 ? `<span class="tbtn" data-seedid="${id}" title="Imposta, cambia o togli il numero di testa di serie">T</span><span class="tbtn ebtn" data-enterid="${id}" title="Scegli a quale turno entra questo giocatore">&#10548;</span>` : ""}</span></div>`;
+}
+function matchHtml(m, r, i, pl, d) {
+  const real = m.a > 0 && m.b > 0;
+  return `<div class="match">${plHtml(m.a, m, r, i, pl, d, 2 * i)}${plHtml(m.b, m, r, i, pl, d, 2 * i + 1)}${
+    real && !editMode ? `<div class="sc"><input type="text" placeholder="punteggio" value="${esc(m.score)}" data-r="${r}" data-m="${i}"></div>` : ""}</div>`;
+}
+
+/* ---------------- IMPOSTAZIONI ---------------- */
+function renderImp() {
+  $("#main").innerHTML = `
+    <div class="card"><h2>Dati del torneo (compaiono nel PDF)</h2>
+      <div class="row">
+        <label class="f">Titolo<input type="text" id="sT" size="34" value="${esc(S.title)}"></label>
+        <label class="f">Luogo<input type="text" id="sL" size="26" value="${esc(S.luogo)}"></label>
+        <label class="f">Data<input type="text" id="sD" size="22" placeholder="es. 15-16 novembre 2026" value="${esc(S.date)}"></label>
+        <button class="b" id="sv" style="align-self:flex-end">Salva</button>
+      </div></div>
+    <div class="card"><h2>Esportazione elenco soci da TennisCall</h2>
+      <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo di esportazione<input type="text" id="sT2" value="${esc(S.tcUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
+      <p class="hint">Indirizzo del file CSV con i clienti: si apre con il pulsante &ldquo;Scarica e importa da TennisCall&rdquo; nella scheda Iscritti. Si salva con il pulsante Salva qui sopra.</p></div>
+    <div class="card"><h2>Servizio FITP (avanzato)</h2>
+      <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo del servizio di ricerca giocatori<input type="text" id="sU" value="${esc(S.fitpUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
+      <p class="hint">Serve solo se il portale FITP cambia indirizzo. Il valore predefinito &egrave; quello usato dal sito fitp.it. Si salva con il pulsante Salva qui sopra.</p></div>
+    <div class="card"><h2>Esporta PDF</h2>
+      <div class="row">
+        <button class="b" id="p1">PDF completo (maschile + femminile)</button>
+        <button class="g" id="p2">Solo maschile</button>
+        <button class="g" id="p3">Solo femminile</button>
+      </div>
+      <p class="hint">Il PDF viene salvato nella cartella del programma e si apre da solo (se il programma gira su un server remoto, viene scaricato dal browser). Ogni tabellone &egrave; su una pagina separata.</p></div>
+    <div class="card"><h2>Informazioni</h2>
+      <p class="hint">Tutti i dati vengono salvati automaticamente nel file <b>torneo_tc_salemi.json</b>, accanto al programma: alla prossima apertura ritrovi iscritti, tabelloni e risultati. Per ricominciare da zero elimina quel file.</p></div>`;
+  $("#sv").onclick = async () => {
+    const j = await act("/api/settings", { title: $("#sT").value, luogo: $("#sL").value, date: $("#sD").value, fitpUrl: $("#sU").value, tcUrl: $("#sT2").value });
+    if (j) { toast("Salvato"); render(); }
+  };
+  $("#p1").onclick = () => savePdf("all"); $("#p2").onclick = () => savePdf("M"); $("#p3").onclick = () => savePdf("F");
+}
+
+async function savePdf(which) {
+  if (S && S.serverMode) {
+    const r = await fetch("/api/pdf?which=" + which);
+    if (!r.ok) { try { const e = await r.json(); toast(e.error || "Errore PDF", true); } catch (x) { toast("Errore PDF", true); } return; }
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "TC_Salemi_" + ({ all: "Tabelloni", M: "Tabellone_Maschile", F: "Tabellone_Femminile" }[which] || "Tabellone") + ".pdf";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast("PDF scaricato");
+    return;
+  }
+  const j = await call("/api/pdf/save", { which });
+  if (j) toast("PDF salvato: " + j.path);
+}
+
+/* ---------------- CLASSIFICA ---------------- */
+let clFilter = "", clSex = "", pollT = null, wasRunning = false;
+
+function shortDate(s) { return s ? String(s).split(" ")[0] : ""; }
+
+function statoTag(p) {
+  const e = p.esito || "";
+  if (e === "TROVATO") return '<span class="tag" title="' + esc(p.note) + '">trovato</span>';
+  if (e === "NON AGONISTA") return '<span class="tag" title="' + esc(p.note) + '">non agonista</span>';
+  if (e) return '<span class="tag w" title="' + esc(p.note) + '">' + esc(e.toLowerCase()) + '</span>';
+  return "";
+}
+function varHtml(p) {
+  const h = p.storico || [];
+  if (!h.length) return '<span class="muted">-</span>';
+  const l = h[h.length - 1];
+  const tip = h.slice().reverse().map(x => x.data + ": " + (x.da || "-") + " -> " + x.a + " (" + x.fonte + ")").join("\n");
+  return '<span title="' + esc(tip) + '">' + esc(l.da || "-") + " &rarr; <b>" + esc(l.a) + "</b> <span class='muted'>" + esc(shortDate(l.data)) + "</span></span>";
+}
+
+function renderClassifica() {
+  const list = S.players.slice().sort((a, b) => a.forza - b.forza || fullName(a).localeCompare(fullName(b), "it"));
+  const rows = list.map((p, i) => `
+    <tr data-id="${p.id}" data-sex="${p.sesso}">
+      <td class="muted">${i + 1}</td><td>${esc(p.cognome)}</td><td>${esc(p.nome)}</td><td>${p.sesso}</td>
+      <td><input type="text" class="cl" value="${esc(p.classifica)}"></td>
+      <td>${esc(p.categoria)}</td><td>${esc(p.provincia)}</td><td>${statoTag(p)}</td>
+      <td class="muted">${esc(shortDate(p.aggiornato))}</td><td>${varHtml(p)}</td>
+      <td><button class="g one" title="Aggiorna solo questo giocatore dal portale FITP">&#8635;</button></td>
+    </tr>`).join("");
+  $("#main").innerHTML = `
+    <div class="card">
+      <div class="row">
+        <h2 style="margin:0">Classifica FITP</h2>
+        <span class="tag">Giocatori: ${S.players.length}</span>
+        <span class="muted">Ultimo aggiornamento completo dal portale: <b>${esc(S.aggiornamento || "mai")}</b></span>
+        <span style="flex:1"></span>
+        <select id="fsex"><option value="">Tutti</option><option value="M">Uomini</option><option value="F">Donne</option></select>
+        <input type="text" id="fq" placeholder="Cerca giocatore..." value="${esc(clFilter)}">
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="b" id="upd">Aggiorna dal portale FITP</button>
+        <label class="muted"><input type="checkbox" id="onlyIsc"> solo iscritti al torneo</label>
+        <button class="r" id="cancelUpd" style="display:none">Annulla</button>
+        <button class="g" id="probe" title="Prova una ricerca sul portale e mostra la risposta ricevuta">Prova connessione al portale</button>
+      </div>
+      <div id="prog" style="display:none"><div class="bar"><i id="barI"></i></div><div class="hint" id="progT"></div></div>
+      <p class="hint">La classifica &egrave; salvata nel database interno (<b>classifica_db.json</b>) con lo storico delle variazioni. L&rsquo;aggiornamento interroga il portale FITP giocatore per giocatore: se il portale non risponde per un giocatore gli assegna 4.NC e va avanti (la classifica precedente resta nello storico); se non trova pi&ugrave; un giocatore che aveva una classifica la lascia invariata e lo segna &ldquo;da verificare&rdquo;. Puoi anche correggere a mano una classifica nella casella. Il tabellone gi&agrave; sorteggiato non cambia.</p>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+      <table><thead><tr><th>#</th><th>Cognome</th><th>Nome</th><th>Sesso</th><th>Classifica</th><th>Cat.</th><th>Prov.</th><th>Stato</th><th>Controllato</th><th>Ultima variazione</th><th></th></tr></thead>
+      <tbody id="ctb">${rows}</tbody></table>
+    </div>`;
+  $("#fsex").value = clSex;
+  const applyF = () => {
+    const q = clFilter.trim().toLowerCase();
+    document.querySelectorAll("#ctb tr").forEach(tr => {
+      const okS = !clSex || tr.dataset.sex === clSex;
+      tr.style.display = okS && (!q || tr.textContent.toLowerCase().indexOf(q) >= 0) ? "" : "none";
+    });
+  };
+  applyF();
+  $("#fq").oninput = e => { clFilter = e.target.value; applyF(); };
+  $("#fsex").onchange = e => { clSex = e.target.value; applyF(); };
+  $("#upd").onclick = async () => {
+    const j = await call("/api/fitp/start", { onlyIscritti: $("#onlyIsc").checked });
+    if (j) startPoll();
+  };
+  $("#cancelUpd").onclick = () => call("/api/fitp/cancel", {});
+  $("#probe").onclick = async () => {
+    $("#probe").disabled = true;
+    const r = await call("/api/fitp/test", {});
+    $("#probe").disabled = false;
+    if (!r) return;
+    let t = "Indirizzo: " + r.url + "\n";
+    if (r.error && !r.status) t += "NESSUNA RISPOSTA\nErrore: " + r.error;
+    else {
+      t += "Risposta HTTP: " + r.status + "\nGiocatori trovati nella prova: " + r.count + (r.sample ? " (es. " + r.sample + ")" : "") + "\n";
+      if (r.error) t += "Problema: " + r.error + "\n";
+      if (r.status !== 200 || r.count === 0) t += "\nRisposta ricevuta:\n" + r.body;
+      else t += "\nIl portale risponde correttamente.";
+    }
+    alert(t);
+  };
+  $("#ctb").onchange = async e => {
+    if (!e.target.classList.contains("cl")) return;
+    const id = +e.target.closest("tr").dataset.id;
+    const j = await act("/api/player", { id, classifica: e.target.value });
+    if (j) { toast("Classifica salvata"); render(); }
+  };
+  $("#ctb").onclick = async e => {
+    if (!e.target.classList.contains("one")) return;
+    const id = +e.target.closest("tr").dataset.id;
+    const j = await call("/api/fitp/start", { ids: [id] });
+    if (j) startPoll();
+  };
+  pollOnce(true);
+}
+
+async function pollOnce(resume) {
+  const j = await call("/api/fitp/status");
+  if (!j || tab !== "class") return;
+  const prog = $("#prog");
+  if (!prog) return;
+  if (j.running) {
+    wasRunning = true;
+    prog.style.display = ""; $("#cancelUpd").style.display = ""; $("#upd").disabled = true;
+    $("#barI").style.width = (j.total ? Math.round(100 * j.done / j.total) : 0) + "%";
+    $("#progT").textContent = "Aggiornati " + j.done + " di " + j.total + (j.current ? " - ora: " + j.current : "");
+    clearTimeout(pollT); pollT = setTimeout(() => pollOnce(), 800);
+  } else {
+    $("#cancelUpd").style.display = "none"; $("#upd").disabled = false;
+    if (wasRunning) {
+      wasRunning = false;
+      const s = await call("/api/state"); if (s) S = s;
+      render();
+      toast(j.message ? j.message : ("Aggiornamento finito: " + j.found + " trovati, " + j.none + " non agonisti, " + j.verify + " da verificare, " + j.errors + " con errore di rete (assegnata 4.NC), " + j.changed + " classifiche cambiate" + (j.errors > 0 && j.lastError ? ". Primo errore: " + j.lastError : "")), !!j.message || j.errors > 0);
+    }
+  }
+}
+function startPoll() { wasRunning = true; clearTimeout(pollT); pollOnce(); }
+
+/* ---------------- GUIDA ---------------- */
+function renderHelp() {
+  $("#main").innerHTML = `
+    <div class="card" style="max-width:820px;line-height:1.55">
+      <h2>Come si usa</h2>
+      <ol>
+        <li>Apri la scheda del tabellone (maschile o femminile) e premi <b>Modifica sorteggio</b>.</li>
+        <li>Nel primo turno clicca un giocatore, o un BYE, e poi un secondo. I due si scambiano di posto.</li>
+        <li>Ripeti quanto serve e premi <b>Fine modifica</b>.</li>
+      </ol>
+      <p>Con questo puoi, per esempio:</p>
+      <ul>
+        <li>separare due giocatori che non vuoi far incontrare subito;</li>
+        <li>spostare una testa di serie;</li>
+        <li>dare un BYE a una persona precisa, scambiandola con una casella BYE;</li>
+        <li>dare, cambiare o togliere il numero di testa di serie a un giocatore, con il pulsante <b>T</b> accanto al suo nome (visibile in modalit&agrave; Modifica sorteggio);</li>
+        <li>far entrare una testa di serie (o chiunque) a un turno diverso dal primo, con il pulsante <b>&#10548;</b>: scegli il turno (2 = ottavi/quarti&hellip;, a seconda del tabellone) e il programma sistema i BYE. Con lo stesso pulsante puoi anche riportarlo al primo turno.</li>
+      </ul>
+      <h2 style="margin-top:18px">Limiti</h2>
+      <ul>
+        <li>Puoi scambiare di posto anche a risultati gi&agrave; inseriti: il programma chiede conferma e azzera solo i risultati delle partite coinvolte (quelle dei due giocatori scambiati e dei turni che le seguono). Le partite degli altri rami restano come sono.</li>
+        <li>Per far entrare un giocatore a un turno successivo servono abbastanza BYE: il programma libera il suo spicchio di tabellone con dei BYE, spostando altrove i giocatori che c&rsquo;erano, e ti dice se non bastano. Se i giocatori sono quanti i posti del tabellone (nessun BYE) non si pu&ograve; saltare nessun turno.</li>
+        <li>Il numero della testa di serie resta attaccato al giocatore. Se lo sposti, il suo numero lo segue e il PDF mostra la nuova posizione.</li>
+        <li>La modifica viene salvata e finisce anche nel PDF.</li>
+      </ul>
+    </div>`;
+}
+
+/* ---------------- AVVIO ---------------- */
+document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+$("#pdfAll").onclick = () => savePdf("all");
+$("#quit").onclick = async () => {
+  if (!confirm("Chiudere il programma? I dati sono gia' salvati.")) return;
+  await fetch("/api/quit", { method: "POST" }).catch(() => {});
+  document.body.innerHTML = '<div style="padding:40px;font-size:18px">Programma chiuso. Puoi chiudere questa finestra.</div>';
+};
+let syncing = false;
+async function autoSync() {
+  if (syncing || !S) return; syncing = true;
+  try {
+    const r = await fetch("/api/sync", { method: "POST", body: JSON.stringify({ force: false }) });
+    const j = await r.json();
+    if (r.ok && j.changed) { S = j; toast(j.message || "Elenco giocatori aggiornato dal file Excel"); render(); }
+  } catch (e) {}
+  syncing = false;
+}
+window.addEventListener("focus", autoSync);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) autoSync(); });
+const ping = () => fetch("/api/ping").catch(() => {});
+setInterval(ping, 5000);
+window.addEventListener("pagehide", () => { try { navigator.sendBeacon("/api/closing"); } catch (e) {} });
+(async () => { await ping(); const j = await call("/api/state"); if (j) { S = j; render(); } })();
+</script>
+</body>
+</html>
