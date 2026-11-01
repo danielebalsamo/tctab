@@ -482,10 +482,12 @@ function tcImportLocal() {
   ov.className = "ovl";
   ov.innerHTML = `<div class="dlg">
     <h2 style="margin:0">Importa da TennisCall</h2>
-    <p class="hint" style="margin:0">Resti nell&rsquo;app (nessuna altra scheda). Nessun download automatico dai server.<br>
-    1) Inserisci le credenziali di amministratore TennisCall (solo il nome utente viene ricordato).<br>
-    2) Su TennisCall scarica il CSV sul dispositivo, poi qui <b>seleziona il file</b> da Download.<br>
-    3) L&rsquo;elenco iscritti viene aggiornato e il CSV salvato su disco (<code>/data/tenniscall.csv</code>).</p>
+    <p class="hint" style="margin:0">
+    1) Maschera credenziali TennisCall (resti nell&rsquo;app).<br>
+    2) Scarica il CSV da TennisCall sul dispositivo (esportazione clienti).<br>
+    3) Seleziona il CSV da Download &rarr; elenco aggiornato + salvataggio su <code>/data/tenniscall.csv</code>.<br>
+    4) Oppure <b>Ho gi&agrave; il CSV</b> per aprire subito il selettore.
+    </p>
     <label class="f">Email o nome utente<input type="text" id="tcU" autocomplete="username" value="${esc(S.tcUser || "")}"></label>
     <label class="f">Password<input type="password" id="tcP" autocomplete="current-password"></label>
     <div class="tcmsg" id="tcMsg"></div>
