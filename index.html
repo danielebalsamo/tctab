@@ -259,7 +259,7 @@ function renderIscritti() {
         <b>Elenco da TennisCall:</b>
         <button class="b" id="tcGo">Importa da TennisCall</button>
         <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" style="display:none">
-        <span class="muted">Inserisci le credenziali: se il download automatico &egrave; bloccato, selezioni il CSV dal dispositivo.</span>
+        <span class="muted">Scarica il CSV da TennisCall nel browser, poi selezionalo qui.</span>
       </div>
       <p class="hint">Togli la spunta a chi non partecipa. Il <b>sesso &egrave; stimato dal nome</b>: controllalo e correggilo se serve. La classifica pu&ograve; essere modificata a mano (4.1 &egrave; la pi&ugrave; forte, 4.NC la pi&ugrave; debole).</p>
       <div id="addbox" style="display:none;margin-top:10px" class="row">
@@ -468,73 +468,32 @@ async function importCsvFile(f) {
 }
 
 function tcImportLocal() {
+  const tcUrl = (S.tcUrl && S.tcUrl.trim()) || "https://admin.tenniscall.com/it/tennis-center/export-customers?id=6435";
   const ov = document.createElement("div");
   ov.className = "ovl";
   ov.innerHTML = `<div class="dlg">
     <h2 style="margin:0">Importa da TennisCall</h2>
-    <p class="hint" style="margin:0">Inserisci le credenziali di <b>amministratore</b> di TennisCall. Il programma prova a scaricare l&rsquo;elenco e a salvarlo sul disco. Le credenziali non vengono memorizzate (solo il nome utente).</p>
-    <label class="f">Email o nome utente<input type="text" id="tcU" autocomplete="username" value="${esc(S.tcUser || "")}"></label>
-    <label class="f">Password<input type="password" id="tcP" autocomplete="current-password"></label>
-    <div class="tcmsg" id="tcMsg"></div>
+    <p class="hint" style="margin:0">TennisCall blocca i download automatici dai server. Si fa in due passaggi sul tuo dispositivo:</p>
+    <ol style="margin:8px 0 12px 18px;padding:0;line-height:1.5">
+      <li>Apri TennisCall e <b>scarica il CSV</b> (esportazione clienti).</li>
+      <li>Torna qui e <b>seleziona il file</b> appena scaricato.</li>
+    </ol>
     <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button class="b" id="tcOk">Accedi e importa</button>
-      <button class="g" id="tcFile">Ho gi&agrave; il CSV</button>
+      <a class="b" id="tcOpen" href="${esc(tcUrl)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">1. Apri TennisCall e scarica</a>
+      <button class="b" id="tcPick">2. Seleziona il CSV scaricato</button>
       <button class="g" id="tcNo">Annulla</button>
     </div>
+    <p class="muted" style="margin:10px 0 0">Il file viene importato e salvato anche sul disco del servizio come backup.</p>
   </div>`;
   document.body.appendChild(ov);
   const close = () => ov.remove();
-  const u = ov.querySelector("#tcU"), p = ov.querySelector("#tcP"), msg = ov.querySelector("#tcMsg"), ok = ov.querySelector("#tcOk");
-  (u.value ? p : u).focus();
   ov.querySelector("#tcNo").onclick = close;
-  ov.querySelector("#tcFile").onclick = () => {
+  ov.querySelector("#tcPick").onclick = () => {
     close();
     const inp = $("#csvFile");
     if (inp) inp.click();
   };
-  const pickCsv = (hint) => {
-    if (hint) toast(hint, true);
-    close();
-    // Il browser consente di aprire il selettore file solo dopo un gesto utente:
-    // qui siamo ancora dentro il click/submit della maschera.
-    setTimeout(() => {
-      const inp = $("#csvFile");
-      if (inp) inp.click();
-    }, 50);
-  };
-  const go = async () => {
-    if (!u.value.trim() || !p.value) { msg.className = "tcmsg"; msg.textContent = "Inserisci utente e password."; return; }
-    ok.disabled = true; ok.textContent = "Accesso in corso...";
-    msg.className = "tcmsg ok"; msg.textContent = "Mi collego a TennisCall e scarico l'elenco...";
-    let r, j;
-    try {
-      r = await fetch("/api/tc/import", { method: "POST", body: JSON.stringify({ user: u.value.trim(), password: p.value }) });
-      j = await r.json();
-    } catch (e) { r = { ok: false }; j = { error: "Errore di comunicazione con il programma" }; }
-    ok.disabled = false; ok.textContent = "Accedi e importa";
-    if (r.ok) {
-      p.value = "";
-      S = j;
-      close();
-      toast(j.warning ? j.warning : (j.message || "Elenco importato"), !!j.warning);
-      render();
-      return;
-    }
-    // Download bloccato o errore: apri subito il selettore del CSV locale
-    const blocked = /403|anti-robot|bloccato|protezione/i.test(j.error || "");
-    if (blocked) {
-      pickCsv("Download automatico bloccato. Seleziona il CSV scaricato da TennisCall.");
-      return;
-    }
-    msg.className = "tcmsg";
-    msg.innerHTML = esc(j.error || "Errore")
-      + (j.steps && j.steps.length ? "<details><summary>Dettagli tecnici</summary>" + j.steps.map(esc).join("<br>") + "</details>" : "")
-      + '<div style="margin-top:10px"><button class="b" id="tcRetryFile">Seleziona CSV dal dispositivo</button></div>';
-    const rb = msg.querySelector("#tcRetryFile");
-    if (rb) rb.onclick = () => pickCsv();
-  };
-  ok.onclick = go;
-  ov.addEventListener("keydown", e => { if (e.key === "Enter") go(); if (e.key === "Escape") close(); });
+  ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
 }
 
 function resultsInPaths(d, a, b) {

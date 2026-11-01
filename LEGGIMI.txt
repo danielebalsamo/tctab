@@ -23,10 +23,9 @@ PRIMA DI INIZIARE (IMPORTANTE)
    - Apri l'indirizzo del servizio (https://tabellone-tc-salemi.onrender.com o quello che mostra Render).
    - Il browser chiede utente e password: utente "tcsalemi", password quella del punto 2b.
    - Scheda Iscritti -> "Importa da TennisCall":
-       inserisci le credenziali di amministratore TennisCall (non vengono salvate, solo il nome utente).
-       1) il programma prova a scaricare il CSV e a salvarlo su /data/tenniscall.csv;
-       2) se TennisCall blocca il download (anti-robot), si apre subito la selezione file:
-          scegli il CSV gia' scaricato sul dispositivo (o scaricalo prima da TennisCall).
+       1) apri TennisCall nel browser e scarica il CSV (esportazione clienti);
+       2) seleziona il file scaricato: viene importato e salvato su disco (/data/tenniscall.csv).
+     (TennisCall blocca i download automatici dai server: si fa tutto in locale sul tuo dispositivo.)
    - Scheda Classifica -> "Aggiorna dal portale FITP" per le classifiche.
    - Sul telefono: Chrome (Android) menu -> "Aggiungi a schermata Home"; Safari (iPhone) Condividi -> "Aggiungi alla schermata Home".
 
