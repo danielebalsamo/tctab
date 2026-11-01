@@ -216,10 +216,12 @@ func applyFitp(p *Player, r fitpRes) {
 	case "verify":
 		p.Esito, p.Note = "DA VERIFICARE", r.Note
 	default:
+		// Errore di rete: stesso esito di "non trovato" → non agonista + 4.NC
 		prev := strings.TrimSpace(p.Classifica)
 		setRank(p, "4.NC", "portale (errore)")
-		p.Esito = "4.NC (ERRORE RETE)"
-		p.Note = "Errore di connessione (" + r.Note + "): assegnata 4.NC"
+		p.Categoria, p.Provincia = "", ""
+		p.Esito = "NON AGONISTA"
+		p.Note = "Errore di connessione al portale (" + r.Note + "): assegnata 4.NC"
 		if prev != "" && prev != "4.NC" {
 			p.Note += " (classifica precedente: " + prev + ", visibile nello storico)"
 		}

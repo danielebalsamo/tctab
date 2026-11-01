@@ -30,6 +30,8 @@ main{padding:16px 18px}
 .tag.warn{background:#fdf0dc;color:var(--warn)}
 .tag.err{background:#fde8e8;color:#a32020}
 .tag.info{background:#e8eef8;color:#1d4f9c}
+.tag.nc{background:#e8eef8;color:#1d4f9c}
+input.cl.nc{border-color:#b7c9e8;color:#1d4f9c;font-weight:600;background:#f3f7fc}
 table{border-collapse:collapse;width:100%}
 th,td{padding:6px 8px;border-bottom:1px solid #eceeed;text-align:left;vertical-align:middle}
 th{font-size:12px;text-transform:uppercase;color:var(--mut);letter-spacing:.4px;background:#fafbfa}
@@ -240,7 +242,7 @@ function renderIscritti() {
       <td data-label="Gioca"><input type="checkbox" class="isc" ${p.iscritto ? "checked" : ""}></td>
       <td data-label="Cognome">${esc(p.cognome)}</td><td data-label="Nome">${esc(p.nome)}</td>
       <td data-label="Sesso"><select class="sx"><option value="M" ${p.sesso === "M" ? "selected" : ""}>M</option><option value="F" ${p.sesso === "F" ? "selected" : ""}>F</option></select></td>
-      <td data-label="Classifica"><input type="text" class="cl" value="${esc(p.classifica)}"></td>
+      <td data-label="Classifica"><input type="text" class="cl${isNC(p.classifica) ? " nc" : ""}" value="${esc(p.classifica)}"></td>
       <td data-label="Cat.">${esc(p.categoria)}</td><td data-label="Prov.">${esc(p.provincia)}</td>
       <td data-label="Controllo" class="full">${warnTag(p)}</td>
       <td data-label="" class="full"><button class="r del" title="Elimina dall'elenco">&times;</button></td>
@@ -309,13 +311,18 @@ function renderIscritti() {
     if (j) render();
   };
 }
+function isNC(c) {
+  return /^4\s*[.,]?\s*nc$/i.test(String(c || "").trim());
+}
 function warnTag(p) {
   const t = [];
+  if (p.esito === "NON AGONISTA") t.push('<span class="tag info" title="' + esc(p.note) + '">non agonista</span>');
   if (p.esito === "DA VERIFICARE") t.push('<span class="tag warn" title="' + esc(p.note) + '">da verificare</span>');
   if (p.esito === "DA AGGIORNARE") t.push('<span class="tag info" title="' + esc(p.note) + '">da aggiornare</span>');
   if (p.esito === "NOME MODIFICATO") t.push('<span class="tag info" title="' + esc(p.note) + '">nome modificato</span>');
   if (p.esito && p.esito.indexOf("ERRORE") >= 0) t.push('<span class="tag err" title="' + esc(p.note) + '">errore rete</span>');
   if (!String(p.classifica).trim()) t.push('<span class="tag warn">classifica mancante</span>');
+  else if (isNC(p.classifica) && p.esito !== "NON AGONISTA") t.push('<span class="tag nc" title="Classifica 4.NC">4.NC</span>');
   return t.join(" ");
 }
 function updateCounts() {
@@ -628,6 +635,7 @@ function statoTag(p) {
   if (e === "NOME MODIFICATO") return '<span class="tag info" title="' + esc(p.note) + '">nome modificato</span>';
   if (e.indexOf("ERRORE") >= 0) return '<span class="tag err" title="' + esc(p.note) + '">errore rete</span>';
   if (e) return '<span class="tag warn" title="' + esc(p.note) + '">' + esc(e.toLowerCase()) + '</span>';
+  if (isNC(p.classifica)) return '<span class="tag nc">4.NC</span>';
   return "";
 }
 function varHtml(p) {
@@ -643,7 +651,7 @@ function renderClassifica() {
   const rows = list.map((p, i) => `
     <tr data-id="${p.id}" data-sex="${p.sesso}">
       <td data-label="Pos." class="muted">${i + 1}</td><td data-label="Cognome">${esc(p.cognome)}</td><td data-label="Nome">${esc(p.nome)}</td><td data-label="Sesso">${p.sesso}</td>
-      <td data-label="Classifica"><input type="text" class="cl" value="${esc(p.classifica)}"></td>
+      <td data-label="Classifica"><input type="text" class="cl${isNC(p.classifica) ? " nc" : ""}" value="${esc(p.classifica)}"></td>
       <td data-label="Cat.">${esc(p.categoria)}</td><td data-label="Prov.">${esc(p.provincia)}</td><td data-label="Stato">${statoTag(p)}</td>
       <td data-label="Controllato" class="muted">${esc(shortDate(p.aggiornato))}</td><td data-label="Ultima variazione">${varHtml(p)}</td>
       <td data-label="" class="full"><button class="g one" title="Aggiorna solo questo giocatore dal portale FITP">&#8635;</button></td>
