@@ -255,10 +255,11 @@ function renderIscritti() {
         <input type="text" id="flt" placeholder="Cerca giocatore..." value="${esc(filterText)}">
         <button class="g" id="addp">+ Aggiungi giocatore</button>
       </div>
-      <div class="row" style="margin-top:10px;padding:10px 12px;background:#f1f6f3;border-radius:8px">
+      <div class="row" style="margin-top:10px;padding:10px 12px;background:#f1f6f3;border-radius:8px;flex-wrap:wrap;gap:8px">
         <b>Elenco da TennisCall:</b>
-        <button class="b" id="tcGo">Scarica e importa da TennisCall</button>
-        <span class="muted">Chiede le credenziali di amministratore di TennisCall (non vengono salvate).</span>
+        <button class="b" id="tcGo">Importa da TennisCall</button>
+        <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" style="display:none">
+        <span class="muted">Scarica il CSV da TennisCall nel browser, poi selezionalo qui.</span>
       </div>
       <p class="hint">Togli la spunta a chi non partecipa. Il <b>sesso &egrave; stimato dal nome</b>: controllalo e correggilo se serve. La classifica pu&ograve; essere modificata a mano (4.1 &egrave; la pi&ugrave; forte, 4.NC la pi&ugrave; debole).</p>
       <div id="addbox" style="display:none;margin-top:10px" class="row">
@@ -280,7 +281,13 @@ function renderIscritti() {
     const j = await act("/api/player/add", { nome: $("#an").value, cognome: $("#ac").value, classifica: $("#ak").value, sesso: $("#as").value });
     if (j) { toast("Giocatore aggiunto"); render(); }
   };
-  $("#tcGo").onclick = tcModal;
+  $("#tcGo").onclick = tcImportLocal;
+  $("#csvFile").onchange = async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    await importCsvFile(f);
+  };
   $("#tb").onchange = async e => {
     const tr = e.target.closest("tr"); if (!tr) return;
     const id = +tr.dataset.id; let body = { id };
@@ -440,38 +447,53 @@ async function doEnter(sex, id, R, confirmed) {
   S = j; toast(j.message || "Fatto"); render();
 }
 
-function tcModal() {
+async function importCsvFile(f) {
+  const btn = $("#tcGo");
+  if (btn) { btn.disabled = true; btn.textContent = "Importazione..."; }
+  try {
+    const buf = await f.arrayBuffer();
+    const r = await fetch("/api/import/csv", {
+      method: "POST",
+      headers: { "Content-Type": "text/csv" },
+      body: buf
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || "Errore nell'importazione", true); return; }
+    S = j; toast(j.message || "CSV importato"); render();
+  } catch (err) {
+    toast("Errore di comunicazione con il programma", true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Importa da TennisCall"; }
+  }
+}
+
+function tcImportLocal() {
+  const tcUrl = (S.tcUrl && S.tcUrl.trim()) || "https://admin.tenniscall.com/it/tennis-center/export-customers?id=6435";
   const ov = document.createElement("div");
   ov.className = "ovl";
   ov.innerHTML = `<div class="dlg">
-    <h2 style="margin:0">Accesso a TennisCall</h2>
-    <p class="hint" style="margin:0">Inserisci le credenziali di <b>amministratore</b> di TennisCall. Il programma accede, scarica l&rsquo;elenco clienti e lo importa. Le credenziali non vengono salvate (solo il nome utente, per comodit&agrave;).</p>
-    <label class="f">Email o nome utente<input type="text" id="tcU" autocomplete="username" value="${esc(S.tcUser || "")}"></label>
-    <label class="f">Password<input type="password" id="tcP" autocomplete="current-password"></label>
-    <div class="tcmsg" id="tcMsg"></div>
-    <div class="row"><button class="b" id="tcOk">Accedi e scarica</button><button class="g" id="tcNo">Annulla</button></div>
+    <h2 style="margin:0">Importa da TennisCall</h2>
+    <p class="hint" style="margin:0">TennisCall blocca i download automatici dai server. Si fa in due passaggi sul tuo dispositivo:</p>
+    <ol style="margin:8px 0 12px 18px;padding:0;line-height:1.5">
+      <li>Apri TennisCall e <b>scarica il CSV</b> (esportazione clienti).</li>
+      <li>Torna qui e <b>seleziona il file</b> appena scaricato.</li>
+    </ol>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <a class="b" id="tcOpen" href="${esc(tcUrl)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">1. Apri TennisCall e scarica</a>
+      <button class="b" id="tcPick">2. Seleziona il CSV scaricato</button>
+      <button class="g" id="tcNo">Annulla</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0">Il file viene importato e salvato anche sul disco del servizio come backup.</p>
   </div>`;
   document.body.appendChild(ov);
   const close = () => ov.remove();
-  const u = ov.querySelector("#tcU"), p = ov.querySelector("#tcP"), msg = ov.querySelector("#tcMsg"), ok = ov.querySelector("#tcOk");
-  (u.value ? p : u).focus();
   ov.querySelector("#tcNo").onclick = close;
-  const go = async () => {
-    if (!u.value.trim() || !p.value) { msg.className = "tcmsg"; msg.textContent = "Inserisci utente e password."; return; }
-    ok.disabled = true; ok.textContent = "Accesso in corso...";
-    msg.className = "tcmsg ok"; msg.textContent = "Mi collego a TennisCall e scarico l'elenco...";
-    let r, j;
-    try {
-      r = await fetch("/api/tc/import", { method: "POST", body: JSON.stringify({ user: u.value.trim(), password: p.value }) });
-      j = await r.json();
-    } catch (e) { r = { ok: false }; j = { error: "Errore di comunicazione con il programma" }; }
-    ok.disabled = false; ok.textContent = "Accedi e scarica";
-    if (r.ok) { p.value = ""; S = j; close(); toast(j.message || "Elenco importato"); render(); return; }
-    msg.className = "tcmsg";
-    msg.innerHTML = esc(j.error || "Errore") + (j.steps && j.steps.length ? "<details><summary>Dettagli tecnici</summary>" + j.steps.map(esc).join("<br>") + "</details>" : "");
+  ov.querySelector("#tcPick").onclick = () => {
+    close();
+    const inp = $("#csvFile");
+    if (inp) inp.click();
   };
-  ok.onclick = go;
-  ov.addEventListener("keydown", e => { if (e.key === "Enter") go(); if (e.key === "Escape") close(); });
+  ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
 }
 
 function resultsInPaths(d, a, b) {
@@ -511,7 +533,7 @@ function renderImp() {
       </div></div>
     <div class="card"><h2>Esportazione elenco soci da TennisCall</h2>
       <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo di esportazione<input type="text" id="sT2" value="${esc(S.tcUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
-      <p class="hint">Indirizzo del file CSV con i clienti: si apre con il pulsante &ldquo;Scarica e importa da TennisCall&rdquo; nella scheda Iscritti. Si salva con il pulsante Salva qui sopra.</p></div>
+      <p class="hint">Indirizzo di esportazione CSV di TennisCall: il pulsante &ldquo;Importa da TennisCall&rdquo; nella scheda Iscritti lo apre nel browser. Si salva con il pulsante Salva qui sopra.</p></div>
     <div class="card"><h2>Servizio FITP (avanzato)</h2>
       <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo del servizio di ricerca giocatori<input type="text" id="sU" value="${esc(S.fitpUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
       <p class="hint">Serve solo se il portale FITP cambia indirizzo. Il valore predefinito &egrave; quello usato dal sito fitp.it. Si salva con il pulsante Salva qui sopra.</p></div>

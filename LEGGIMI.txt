@@ -22,17 +22,17 @@ PRIMA DI INIZIARE (IMPORTANTE)
 3) USO (anche da smartphone)
    - Apri l'indirizzo del servizio (https://tabellone-tc-salemi.onrender.com o quello che mostra Render).
    - Il browser chiede utente e password: utente "tcsalemi", password quella del punto 2b.
-   - Scheda Iscritti -> "Scarica e importa da TennisCall": inserisci le credenziali di amministratore di TennisCall;
-     il programma scarica l'elenco soci e lo importa (le credenziali non vengono salvate).
+   - Scheda Iscritti -> "Importa da TennisCall":
+       1) apri TennisCall nel browser e scarica il CSV (esportazione clienti);
+       2) seleziona il file scaricato: viene importato e salvato su disco (/data/tenniscall.csv).
+     (TennisCall blocca i download automatici dai server: si fa tutto in locale sul tuo dispositivo.)
    - Scheda Classifica -> "Aggiorna dal portale FITP" per le classifiche.
    - Sul telefono: Chrome (Android) menu -> "Aggiungi a schermata Home"; Safari (iPhone) Condividi -> "Aggiungi alla schermata Home".
 
 DOPO
 - I dati stanno nel disco di Render (cartella /data). Dalla Dashboard del servizio -> Shell puoi copiare i file
-  torneo_tc_salemi.json e classifica_db.json per fare un backup.
+  torneo_tc_salemi.json, classifica_db.json e tenniscall.csv (ultimo CSV importato) per fare un backup.
 - Per aggiornare il programma: carica i nuovi file su GitHub, Render ripubblica da solo.
 - Per cambiare la password: Dashboard -> Environment -> TORNEO_PASSWORD.
 - Se piu' persone modificano insieme, vale l'ultimo salvataggio.
-- Se "Scarica e importa da TennisCall" dice che il sito ha bloccato la richiesta, vuol dire che TennisCall rifiuta gli
-  accessi automatici dai server di Render. Gli iscritti si possono comunque aggiungere a mano ("+ Aggiungi giocatore").
 - "Aggiorna dal portale FITP" parte dai server di Render: usa "Prova connessione al portale" per controllare che risponda.

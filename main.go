@@ -843,6 +843,23 @@ func routes() *http.ServeMux {
 		}
 		return &st, nil
 	}))
+	// Percorso del file buffer CSV su disco permanente (/data su Render).
+	tcBufferPath := func() string { return filepath.Join(dataDir, "tenniscall.csv") }
+
+	// Salva il CSV sul disco (buffer) e lo importa nell'elenco iscritti.
+	saveAndImportCSV := func(data []byte, source string) (syncStats, error) {
+		path := tcBufferPath()
+		tmp := path + ".tmp"
+		if err := os.WriteFile(tmp, data, 0644); err != nil {
+			return syncStats{}, fmt.Errorf("salvataggio buffer su disco non riuscito: %v", err)
+		}
+		if err := os.Rename(tmp, path); err != nil {
+			os.Remove(tmp)
+			return syncStats{}, fmt.Errorf("salvataggio buffer su disco non riuscito: %v", err)
+		}
+		return importData(data, source, true)
+	}
+
 	mux.HandleFunc("/api/tc/import", func(w http.ResponseWriter, r *http.Request) {
 		var b struct {
 			User     string `json:"user"`
@@ -863,24 +880,114 @@ func routes() *http.ServeMux {
 		save()
 		mu.Unlock()
 
+		// 1) Prova a scaricare da TennisCall
 		data, steps, err := tcFetchExport(target, strings.TrimSpace(b.User), b.Password) // rete: senza lock
 		mu.Lock()
 		defer mu.Unlock()
-		if err != nil {
-			writeJSON(w, 400, map[string]interface{}{"error": err.Error(), "steps": steps})
+
+		if err == nil {
+			// 2a) Download ok → salva buffer su /data e importa
+			stats, ierr := saveAndImportCSV(data, "TennisCall (esportazione)")
+			if ierr != nil {
+				writeJSON(w, 400, map[string]interface{}{"error": ierr.Error(), "steps": steps})
+				return
+			}
+			save()
+			writeJSON(w, 200, struct {
+				*State
+				Message string   `json:"message"`
+				Steps   []string `json:"steps"`
+			}{&st, stats.message("esportazione TennisCall") + " (buffer salvato su disco)", steps})
 			return
 		}
-		stats, err := importData(data, "TennisCall (esportazione)", true)
+
+		// 2b) Download fallito → se esiste un buffer precedente su disco, importalo
+		bufPath := tcBufferPath()
+		if buf, rerr := os.ReadFile(bufPath); rerr == nil && len(bytes.TrimSpace(buf)) > 0 {
+			stats, ierr := importData(buf, "CSV buffer (disco)", true)
+			if ierr != nil {
+				writeJSON(w, 400, map[string]interface{}{
+					"error": err.Error() + " — e anche il buffer su disco non è leggibile: " + ierr.Error(),
+					"steps": steps,
+				})
+				return
+			}
+			save()
+			writeJSON(w, 200, struct {
+				*State
+				Message string   `json:"message"`
+				Steps   []string `json:"steps"`
+				Warning string   `json:"warning"`
+			}{
+				&st,
+				stats.message("CSV buffer su disco"),
+				steps,
+				"Download da TennisCall bloccato. Ho importato l'ultimo CSV salvato su disco. Per aggiornarlo usa «Carica CSV».",
+			})
+			return
+		}
+
+		writeJSON(w, 400, map[string]interface{}{
+			"error": err.Error() + " — nessun buffer CSV presente su disco. Scarica il CSV dal browser e usa «Carica CSV».",
+			"steps": steps,
+		})
+	})
+
+	// Importa un CSV già scaricato (da browser o altro).
+	// 1) lo salva come buffer su /data/tenniscall.csv
+	// 2) lo importa nell'elenco iscritti
+	// Accetta body grezzo (text/csv) oppure multipart "file".
+	mux.HandleFunc("/api/import/csv", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var data []byte
+		var err error
+		ct := r.Header.Get("Content-Type")
+		if strings.HasPrefix(ct, "multipart/") {
+			if err = r.ParseMultipartForm(20 << 20); err != nil {
+				mu.Lock()
+				writeJSON(w, 400, map[string]string{"error": "form non valido: " + err.Error()})
+				mu.Unlock()
+				return
+			}
+			f, _, ferr := r.FormFile("file")
+			if ferr != nil {
+				mu.Lock()
+				writeJSON(w, 400, map[string]string{"error": "manca il file CSV (campo 'file')"})
+				mu.Unlock()
+				return
+			}
+			defer f.Close()
+			data, err = io.ReadAll(io.LimitReader(f, 20<<20))
+		} else {
+			data, err = io.ReadAll(io.LimitReader(r.Body, 20<<20))
+		}
 		if err != nil {
-			writeJSON(w, 400, map[string]interface{}{"error": err.Error(), "steps": steps})
+			mu.Lock()
+			writeJSON(w, 400, map[string]string{"error": "lettura file non riuscita: " + err.Error()})
+			mu.Unlock()
+			return
+		}
+		if len(bytes.TrimSpace(data)) == 0 {
+			mu.Lock()
+			writeJSON(w, 400, map[string]string{"error": "il file è vuoto"})
+			mu.Unlock()
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		stats, err := saveAndImportCSV(data, "CSV caricato")
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
 		save()
 		writeJSON(w, 200, struct {
 			*State
-			Message string   `json:"message"`
-			Steps   []string `json:"steps"`
-		}{&st, stats.message("esportazione TennisCall"), steps})
+			Message string `json:"message"`
+		}{&st, stats.message("CSV caricato") + " (buffer salvato su disco)"})
 	})
 	mux.HandleFunc("/api/draw", api(func(r *http.Request) (interface{}, error) {
 		var b struct {
