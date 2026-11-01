@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabellone Torneo - Tenniscall</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gestione Tabellone Torneo</h1>
+
+        <!-- Sezione Azioni: Tasto unico per importazione da backend -->
+        <div class="actions-bar" style="margin-bottom: 20px;">
+            <button id="btn-import-tenniscall" class="btn btn-primary">
+                Importa da Tenniscall
+            </button>
+            <span id="loading-spinner" style="display: none; margin-left: 10px;">⏳ Importazione ed elaborazione in corso...</span>
+        </div>
+
+        <!-- Tabella Giocatori -->
+        <div class="table-container">
+            <table id="table-giocatori" border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f4f4f4;">
+                        <th>Nome</th>
+                        <th>Cognome</th>
+                        <th>Tessera FITP</th>
+                        <th>Classifica</th>
+                        <th>Circolo</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-giocatori">
+                    <!-- I dati verranno inseriti dinamicamente via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnImport = document.getElementById('btn-import-tenniscall');
+            const spinner = document.getElementById('loading-spinner');
+
+            // Carica la lista dei giocatori esistenti all'avvio
+            caricaGiocatori();
+
+            // Gestione click sul tasto "Importa da Tenniscall"
+            btnImport.addEventListener('click', async () => {
+                btnImport.disabled = true;
+                spinner.style.display = 'inline-block';
+
+                try {
+                    const response = await fetch('/api/import-tenniscall', {
+                        method: 'POST'
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        alert(data.message);
+                        caricaGiocatori(); // Aggiorna la tabella dopo l'importazione
+                    } else {
+                        alert('Errore durante l\'importazione: ' + (data.error || data.message || 'Errore sconosciuto'));
+                    }
+                } catch (err
