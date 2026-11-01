@@ -1,0 +1,9 @@
+# dati del circolo: NON vanno mai caricati su GitHub
+*.json
+*.xlsx
+*.csv
+*.pdf
+torneo_log.txt
+tabellone
+tabellone-linux-*
+*.exe

@@ -1,0 +1,38 @@
+TABELLONE TC SALEMI - VERSIONE PER RENDER
+==========================================
+
+PRIMA DI INIZIARE (IMPORTANTE)
+- Serve un piano a PAGAMENTO di Render con disco permanente: il piano gratuito si spegne dopo 15 minuti
+  e cancella i file a ogni riavvio, quindi perderesti iscritti, tabelloni e risultati.
+  La configurazione (render.yaml) usa il piano "starter" + disco da 1 GB. Controlla i prezzi su render.com/pricing.
+- Il repository GitHub deve essere PRIVATO.
+
+1) METTI I FILE SU GITHUB
+   a. Estrai questo zip sul PC.
+   b. Su github.com: + (in alto a destra) -> New repository. Nome: tabellone-tc-salemi. Seleziona "Private". Create.
+   c. Nella pagina del repository vuoto clicca "uploading an existing file".
+   d. Trascina TUTTI i file estratti (render.yaml, Dockerfile, i file .go, index.html, ecc.) e premi "Commit changes".
+      I file devono stare nella radice del repository, non dentro una cartella.
+
+2) CREA IL SERVIZIO SU RENDER
+   a. Su render.com: New + -> Blueprint -> scegli il repository tabellone-tc-salemi -> Connect.
+   b. Render legge render.yaml. Quando chiede TORNEO_PASSWORD scrivi una password lunga: serve per entrare nel programma.
+   c. Premi Apply e aspetta che lo stato diventi "Live" (alcuni minuti).
+
+3) USO (anche da smartphone)
+   - Apri l'indirizzo del servizio (https://tabellone-tc-salemi.onrender.com o quello che mostra Render).
+   - Il browser chiede utente e password: utente "tcsalemi", password quella del punto 2b.
+   - Scheda Iscritti -> "Scarica e importa da TennisCall": inserisci le credenziali di amministratore di TennisCall;
+     il programma scarica l'elenco soci e lo importa (le credenziali non vengono salvate).
+   - Scheda Classifica -> "Aggiorna dal portale FITP" per le classifiche.
+   - Sul telefono: Chrome (Android) menu -> "Aggiungi a schermata Home"; Safari (iPhone) Condividi -> "Aggiungi alla schermata Home".
+
+DOPO
+- I dati stanno nel disco di Render (cartella /data). Dalla Dashboard del servizio -> Shell puoi copiare i file
+  torneo_tc_salemi.json e classifica_db.json per fare un backup.
+- Per aggiornare il programma: carica i nuovi file su GitHub, Render ripubblica da solo.
+- Per cambiare la password: Dashboard -> Environment -> TORNEO_PASSWORD.
+- Se piu' persone modificano insieme, vale l'ultimo salvataggio.
+- Se "Scarica e importa da TennisCall" dice che il sito ha bloccato la richiesta, vuol dire che TennisCall rifiuta gli
+  accessi automatici dai server di Render. Gli iscritti si possono comunque aggiungere a mano ("+ Aggiungi giocatore").
+- "Aggiorna dal portale FITP" parte dai server di Render: usa "Prova connessione al portale" per controllare che risponda.
