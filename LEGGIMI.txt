@@ -22,12 +22,9 @@ PRIMA DI INIZIARE (IMPORTANTE)
 3) USO (anche da smartphone)
    - Apri l'indirizzo del servizio (https://tabellone-tc-salemi.onrender.com o quello che mostra Render).
    - Il browser chiede utente e password: utente "tcsalemi", password quella del punto 2b.
-   - Scheda Iscritti -> "Importa da TennisCall":
-       nessun download automatico (TennisCall lo blocca dai server).
-       1) maschera credenziali (resti nell'app; la password non viene salvata);
-       2) su TennisCall scarica il CSV sul dispositivo;
-       3) seleziona il file da Download: iscritti aggiornati + CSV su /data/tenniscall.csv.
-       Pulsante "Ho gia' il CSV" per saltare le credenziali e aprire subito il selettore.
+   - Scheda Iscritti -> "Importa CSV TennisCall":
+       apre subito il selettore file. Scegli il CSV gia' scaricato da TennisCall (cartella Download):
+       elenco iscritti aggiornato e file salvato su /data/tenniscall.csv.
    - Scheda Classifica -> "Aggiorna dal portale FITP" per le classifiche.
    - Sul telefono: Chrome (Android) menu -> "Aggiungi a schermata Home"; Safari (iPhone) Condividi -> "Aggiungi alla schermata Home".
 
