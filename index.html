@@ -82,7 +82,6 @@ label.f input{font-size:14px;color:var(--ink)}
 
 nav button .ic{display:none;font-size:18px;line-height:1}
 nav button .ls{display:none}
-#pdfAll .sm{display:none}
 input[type=checkbox]{width:18px;height:18px}
 @media (max-width:760px){
   body{font-size:15px;-webkit-text-size-adjust:100%}
@@ -91,8 +90,6 @@ input[type=checkbox]{width:18px;height:18px}
   header h1{font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .right{gap:6px}
   .right button{padding:8px 12px;font-size:13px;white-space:nowrap}
-  #pdfAll .lg{display:none}
-  #pdfAll .sm{display:inline}
   #quit{display:none}
   nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#1c2420;gap:0;padding:4px 2px calc(4px + env(safe-area-inset-bottom));border-top:1px solid #33403a;flex:none;justify-content:space-around}
   nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 1px;font-size:10.5px;border-radius:8px;min-width:0;white-space:nowrap}
@@ -172,8 +169,7 @@ input[type=checkbox]{width:18px;height:18px}
     <button data-tab="help"><span class="ic">&#10067;</span><span>Guida</span></button>
   </nav>
   <div class="right">
-    <button class="b" id="pdfAll"><span class="lg"></span><span class="sm"></span></button>
-    <button class="g" id="quit" style="background:#2d3833;color:#fff;border-color:#2d3833"></button>
+  <button class="g" id="quit" style="background:#d32f2f;color:#fff;border-color:#2d3833">x</button>
   </div>
 </header>
 <main id="main"></main>
@@ -713,7 +709,6 @@ function renderHelp() {
 
 /* ---------------- AVVIO ---------------- */
 document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-$("#pdfAll").onclick = () => savePdf("all");
 $("#quit").onclick = async () => {
   if (!confirm("Chiudere il programma? I dati sono gia' salvati.")) return;
   await fetch("/api/quit", { method: "POST" }).catch(() => {});
