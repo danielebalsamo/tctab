@@ -548,7 +548,7 @@ func save() {
 }
 
 func loadState() {
-	st = State{Title: "Torneo Sociale TC Salemi", Luogo: "Tennis Club Salemi", NextID: 1, Draws: map[string]*Draw{}}
+	st = State{Title: "Torneo Molto Sociale", Luogo: "Tennis Club Salemi", NextID: 1, Draws: map[string]*Draw{}}
 	if b, err := os.ReadFile(statePath); err == nil {
 		var s State
 		if json.Unmarshal(b, &s) == nil {
