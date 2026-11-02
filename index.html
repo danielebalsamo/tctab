@@ -172,6 +172,7 @@ input[type=checkbox]{width:18px;height:18px}
     <button data-tab="help"><span class="ic">&#10067;</span><span>Guida</span></button>
   </nav>
   <div class="right">
+    <button class="b" id="pdfAll"><span class="lg">Esporta PDF</span><span class="sm">PDF</span></button>
     <button class="g" id="quit" style="background:#2d3833;color:#fff;border-color:#2d3833">Chiudi programma</button>
   </div>
 </header>
@@ -522,7 +523,7 @@ function renderImp() {
     <div class="card"><h2>Servizio FITP (avanzato)</h2>
       <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo del servizio di ricerca giocatori<input type="text" id="sU" value="${esc(S.fitpUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
       <p class="hint">Serve solo se il portale FITP cambia indirizzo. Il valore predefinito &egrave; quello usato dal sito fitp.it. Si salva con il pulsante Salva qui sopra.</p></div>
-      <!-- xx -->
+    <div class="card"><h2>Esporta PDF</h2>
       <div class="row">
         <button class="b" id="p1">PDF completo (maschile + femminile)</button>
         <button class="g" id="p2">Solo maschile</button>
