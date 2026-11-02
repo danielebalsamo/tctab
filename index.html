@@ -90,7 +90,6 @@ input[type=checkbox]{width:18px;height:18px}
   header h1{font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .right{gap:6px}
   .right button{padding:8px 12px;font-size:13px;white-space:nowrap}
-  #quit{display:none}
   nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#1c2420;gap:0;padding:4px 2px calc(4px + env(safe-area-inset-bottom));border-top:1px solid #33403a;flex:none;justify-content:space-around}
   nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 1px;font-size:10.5px;border-radius:8px;min-width:0;white-space:nowrap}
   nav button .ic{display:block}
@@ -159,7 +158,8 @@ input[type=checkbox]{width:18px;height:18px}
 <body>
 <header>
   <img id="logo" src="/logo.png" alt="" onerror="this.style.display='none'">
-  <h1 id="ttl">Torneo Molto Sociale</h1>
+  <h1 id="ttl">Torneo Sociale TC Salemi
+  </h1>
   <nav id="nav">
     <button data-tab="iscritti"><span class="ic">&#128101;</span><span>Iscritti</span></button>
     <button data-tab="class"><span class="ic">&#128200;</span><span>Classifica</span></button>
@@ -169,7 +169,6 @@ input[type=checkbox]{width:18px;height:18px}
     <button data-tab="help"><span class="ic">&#10067;</span><span>Guida</span></button>
   </nav>
   <div class="right">
-  <button class="g" id="quit" style="background:#d32f2f;color:#fff;border-color:#2d3833">x</button>
   </div>
 </header>
 <main id="main"></main>
@@ -216,7 +215,6 @@ function counts() {
 
 function render() {
   if (S) { S.players = S.players || []; S.draws = S.draws || {}; }
-  if (S.serverMode) { const q = $("#quit"); if (q) q.style.display = "none"; }
   $("#ttl").textContent = S.title || "Torneo Sociale";
   document.title = S.title || "Torneo Sociale";
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
@@ -709,11 +707,6 @@ function renderHelp() {
 
 /* ---------------- AVVIO ---------------- */
 document.querySelectorAll("#nav button").forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-$("#quit").onclick = async () => {
-  if (!confirm("Chiudere il programma? I dati sono gia' salvati.")) return;
-  await fetch("/api/quit", { method: "POST" }).catch(() => {});
-  document.body.innerHTML = '<div style="padding:40px;font-size:18px">Programma chiuso. Puoi chiudere questa finestra.</div>';
-};
 const ping = () => fetch("/api/ping").catch(() => {});
 setInterval(ping, 5000);
 window.addEventListener("pagehide", () => { try { navigator.sendBeacon("/api/closing"); } catch (e) {} });
