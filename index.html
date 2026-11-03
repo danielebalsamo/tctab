@@ -316,7 +316,7 @@ function renderIscritti() {
     const j = await act("/api/player/add", { nome: $("#an").value, cognome: $("#ac").value, classifica: $("#ak").value, sesso: $("#as").value });
     if (j) { toast("Giocatore aggiunto"); render(); }
   };
-  $("#tcGo").onclick = openTcMenu;
+  $("#tcGo").onclick = () => openTcMenu();
   $("#csvFile").onchange = async e => {
     const f = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -630,10 +630,11 @@ async function pickCsv() {
   if (inp) { inp.value = ""; inp.click(); }
 }
 
-function openTcMenu() {
+function openTcMenu(afterDownload) {
   const ovl = popup('<h2 style="margin:0">Importa elenco TennisCall</h2>' +
+    (afterDownload ? '<p style="margin:0">Finestra di TennisCall chiusa. Ora scegli <b>2) Importa CSV</b> per caricare il file appena scaricato.</p>' : "") +
     '<button class="b" id="tcO1">1) Scarica CSV da TennisCall</button>' +
-    '<p class="hint" style="margin:0">Chiede utente e password di TennisCall e salva il file nella cartella Download.</p>' +
+    '<p class="hint" style="margin:0">Apre il sito TennisCall in un&rsquo;altra finestra: il CSV viene salvato nella cartella Download.</p>' +
     '<button class="b" id="tcO2">2) Importa CSV</button>' +
     '<p class="hint" style="margin:0">Apre la selezione file (cartella Download) e importa l&rsquo;elenco scelto.</p>' +
     '<div class="row"><button class="g" id="tcNo">Chiudi</button></div>');
@@ -642,45 +643,33 @@ function openTcMenu() {
   ovl.querySelector("#tcO2").onclick = () => { ovl.remove(); pickCsv(); };
 }
 
+let tcWin = null, tcTimer = null;
+
 function openTcLogin() {
   const url = (S && S.tcUrl) || TC_DEFAULT_URL;
-  const ovl = popup('<h2 style="margin:0">Accesso a TennisCall</h2>' +
-    '<label class="f">Utente<input type="text" id="tcU" autocomplete="username" autocapitalize="off" value="' + esc((S && S.tcUser) || "") + '"></label>' +
-    '<label class="f">Password<input type="password" id="tcP" autocomplete="current-password"></label>' +
-    '<p class="hint" style="margin:0">La password serve solo per questo scaricamento e non viene salvata.</p>' +
-    '<div id="tcMsg" class="hint" style="margin:0;color:#b3261e"></div>' +
-    '<div class="row"><button class="b" id="tcOk">Scarica CSV</button><button class="g" id="tcX">Annulla</button><span style="flex:1"></span><a href="' + esc(url) + '" target="_blank" rel="noopener" class="muted" id="tcLink">Apri TennisCall nel browser</a></div>');
-  ovl.querySelector("#tcX").onclick = () => ovl.remove();
-  const go = async () => {
-    const user = ovl.querySelector("#tcU").value.trim(), password = ovl.querySelector("#tcP").value;
-    const msg = ovl.querySelector("#tcMsg"), ok = ovl.querySelector("#tcOk");
-    if (!user || !password) { msg.textContent = "Inserisci utente e password."; return; }
-    ok.disabled = true; ok.textContent = "Scarico..."; msg.textContent = "";
-    try {
-      const r = await fetch("/api/tc/download", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, password }) });
-      if (!r.ok) {
-        let j = {}; try { j = await r.json(); } catch (e) {}
-        msg.innerHTML = esc(j.error || "Scaricamento non riuscito.") + '<br>Puoi usare il link &ldquo;Apri TennisCall nel browser&rdquo;: accedi, il file va in Download, poi scegli &ldquo;2) Importa CSV&rdquo;.';
-        return;
-      }
-      const blob = await r.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "tenniscall_iscritti_" + new Date().toISOString().slice(0, 10) + ".csv";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      ovl.querySelector(".dlg").innerHTML = '<h2 style="margin:0">CSV scaricato</h2><p style="margin:0">Il file &egrave; nella cartella Download. Vuoi importarlo adesso?</p><div class="row"><button class="b" id="tcNow">Importa ora</button><button class="g" id="tcLater">Pi&ugrave; tardi</button></div>';
-      ovl.querySelector("#tcLater").onclick = () => ovl.remove();
-      ovl.querySelector("#tcNow").onclick = () => { ovl.remove(); pickCsv(); };
-    } catch (e) {
-      msg.textContent = "Errore di comunicazione con il programma.";
-    } finally {
-      if (ok.isConnected) { ok.disabled = false; ok.textContent = "Scarica CSV"; }
-    }
+  tcWin = window.open(url, "tenniscall");
+  const ovl = popup('<h2 style="margin:0">Scarica il CSV da TennisCall</h2>' +
+    '<p style="margin:0">TennisCall blocca l&rsquo;accesso automatico dal server di Render, quindi ho aperto <b>direttamente il sito TennisCall</b> in un&rsquo;altra finestra del browser.</p>' +
+    '<ol class="hint" style="margin:0;padding-left:20px"><li>Accedi a TennisCall se richiesto: il file CSV viene scaricato nella cartella Download. Se dopo l&rsquo;accesso il download non parte, premi &ldquo;Riapri TennisCall&rdquo;.</li>' +
+    '<li>Appena il file &egrave; scaricato torna qui e premi &ldquo;Ho scaricato il file&rdquo;: chiudo la finestra di TennisCall e compare il tasto <b>2) Importa CSV</b>.</li></ol>' +
+    (tcWin ? "" : '<div class="hint" style="margin:0;color:#b3261e">Il browser ha bloccato l&rsquo;apertura della finestra: consenti i popup per questo sito oppure premi &ldquo;Riapri TennisCall&rdquo;.</div>') +
+    '<div class="row"><button class="b" id="tcDone">Ho scaricato il file</button><button class="g" id="tcAgain">Riapri TennisCall</button><button class="g" id="tcX">Annulla</button></div>');
+  const finish = () => {
+    clearInterval(tcTimer);
+    try { if (tcWin && !tcWin.closed) tcWin.close(); } catch (e) {}
+    tcWin = null;
+    ovl.remove();
+    window.focus();
+    openTcMenu(true);
   };
-  ovl.querySelector("#tcOk").onclick = go;
-  ovl.querySelector("#tcP").onkeydown = e => { if (e.key === "Enter") go(); };
-  setTimeout(() => ovl.querySelector(ovl.querySelector("#tcU").value ? "#tcP" : "#tcU").focus(), 50);
+  clearInterval(tcTimer);
+  tcTimer = setInterval(() => {
+    if (!ovl.isConnected) { clearInterval(tcTimer); return; }
+    if (tcWin && tcWin.closed) finish(); // la finestra di TennisCall e' stata chiusa a mano
+  }, 600);
+  ovl.querySelector("#tcDone").onclick = finish;
+  ovl.querySelector("#tcAgain").onclick = () => { tcWin = window.open(url, "tenniscall"); };
+  ovl.querySelector("#tcX").onclick = () => { clearInterval(tcTimer); ovl.remove(); };
 }
 
 async function importCsvFile(f) {
