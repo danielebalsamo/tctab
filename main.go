@@ -104,6 +104,9 @@ type State struct {
 	Circolo  []RankRow            `json:"circolo"`
 	Interna  []RankRow            `json:"interna"`
 	RRStand  map[string][][]Stand `json:"rrStand"`
+
+	LogoCustom    bool `json:"logoCustom"`
+	FaviconCustom bool `json:"faviconCustom"`
 }
 
 var (

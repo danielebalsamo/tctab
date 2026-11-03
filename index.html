@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Torneo Sociale</title>
 <link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
 <style>
 :root{--bg:#f3f5f4;--card:#fff;--ink:#1c2420;--mut:#6b756f;--line:#d5dbd8;--acc:#1f6b45;--acc2:#e8f3ec;--warn:#b45309;--win:#d6efd9}
 *{box-sizing:border-box}
@@ -736,6 +737,20 @@ function renderImp() {
     <div class="card"><h2>Servizio FITP (avanzato)</h2>
       <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo del servizio di ricerca giocatori<input type="text" id="sU" value="${esc(S.fitpUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
       <p class="hint">Serve solo se il portale FITP cambia indirizzo. Il valore predefinito &egrave; quello usato dal sito fitp.it. Si salva con il pulsante Salva qui sopra.</p></div>
+    <div class="card"><h2>Logo e icona del circolo</h2>
+      <div class="row" style="align-items:center;gap:18px">
+        <div style="text-align:center"><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;min-width:90px;min-height:56px;display:flex;align-items:center;justify-content:center"><img id="pvLogo" src="/logo.png" alt="" style="max-height:60px;max-width:160px"></div><div class="muted" style="font-size:12px;margin-top:4px">Logo${S.logoCustom ? " (personalizzato)" : " (predefinito)"}</div></div>
+        <div style="text-align:center"><div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;display:flex;align-items:center;justify-content:center"><img id="pvFav" src="/favicon.png" alt="" style="width:40px;height:40px"></div><div class="muted" style="font-size:12px;margin-top:4px">Favicon${S.faviconCustom ? " (personalizzata)" : " (dal logo)"}</div></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="b" id="logoGo">Carica logo...</button>
+        ${S.logoCustom ? '<button class="g" id="logoReset">Ripristina logo predefinito</button>' : ""}
+        <button class="b" id="favGo">Carica favicon...</button>
+        ${S.faviconCustom ? '<button class="g" id="favReset">Ricava la favicon dal logo</button>' : ""}
+        <input type="file" id="logoFile" accept="image/png,image/jpeg,image/gif" style="display:none">
+        <input type="file" id="favFile" accept="image/png,image/jpeg,image/gif" style="display:none">
+      </div>
+      <p class="hint">Il logo compare in alto, nei PDF e nella pagina pubblica; la favicon &egrave; l&rsquo;icona della scheda del browser (e della schermata Home sul telefono). Vanno bene PNG, JPG o GIF (meglio PNG con sfondo trasparente). Se non carichi la favicon viene ricavata dal logo. I file sono salvati nel disco dati e inclusi nel backup. Se l&rsquo;icona non cambia subito, ricarica la pagina.</p></div>
     <div class="card"><h2>Pagina pubblica per i giocatori</h2>
       <div class="row"><input type="text" id="pubUrl" readonly value="${esc(location.origin + "/pubblico")}" style="flex:1;min-width:240px"><button class="g" id="pubCopy">Copia</button><button class="g" id="pubOpen">Apri</button></div>
       <p class="hint">Chi ha questo indirizzo vede tabelloni, gironi, risultati e classifica di circolo in sola lettura, <b>senza password</b>, e non pu&ograve; modificare nulla. Si aggiorna da sola ogni 30 secondi. Non mostra note, indirizzi di servizio, credenziali o l&rsquo;elenco degli iscritti non sorteggiati.</p></div>
@@ -758,6 +773,26 @@ function renderImp() {
   document.querySelectorAll(".pdfc").forEach(b => b.onclick = () => savePdf(b.dataset.c));
   $("#pubCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#pubUrl").value); toast("Indirizzo copiato"); } catch (e) { $("#pubUrl").select(); toast("Selezionato: copialo a mano"); } };
   $("#pubOpen").onclick = () => window.open("/pubblico", "_blank");
+  const bumpIcons = () => {
+    const v = Date.now();
+    document.querySelectorAll('img[src^="/logo.png"]').forEach(i => { i.src = "/logo.png?v=" + v; i.style.display = ""; });
+    document.querySelectorAll('img[src^="/favicon.png"]').forEach(i => { i.src = "/favicon.png?v=" + v; });
+    document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l => { l.href = "/favicon.png?v=" + v; });
+  };
+  const upImg = (btn, inp, url) => {
+    $(btn).onclick = () => { $(inp).value = ""; $(inp).click(); };
+    $(inp).onchange = async e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const j = await call(url, f, true);
+      if (j && j.players) { S = j; toast("Immagine salvata"); render(); bumpIcons(); }
+    };
+  };
+  upImg("#logoGo", "#logoFile", "/api/logo");
+  upImg("#favGo", "#favFile", "/api/favicon");
+  const rst = (btn, url) => { if ($(btn)) $(btn).onclick = async () => { const j = await act(url, {}); if (j) { toast("Ripristinato"); render(); bumpIcons(); } }; };
+  rst("#logoReset", "/api/logo/reset");
+  rst("#favReset", "/api/favicon/reset");
   $("#bkGo").onclick = async () => {
     const r = await fetch("/api/backup");
     if (!r.ok) { toast("Backup non riuscito", true); return; }

@@ -9,6 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"math"
 	"math/rand"
@@ -702,6 +707,9 @@ func refresh() {
 	}
 	syncLedger()
 	computeRanks()
+	_, e1 := os.Stat(filepath.Join(dataDir, "tclogo.png"))
+	_, e2 := os.Stat(filepath.Join(dataDir, "favicon.png"))
+	st.LogoCustom, st.FaviconCustom = e1 == nil, e2 == nil
 }
 
 type CircoloFile struct {
@@ -746,7 +754,7 @@ func backupZip() ([]byte, error) {
 	save()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	for _, p := range []string{statePath, dbPath, circoloPath, filepath.Join(dataDir, "tenniscall.csv")} {
+	for _, p := range []string{statePath, dbPath, circoloPath, filepath.Join(dataDir, "tenniscall.csv"), filepath.Join(dataDir, "tclogo.png"), filepath.Join(dataDir, "favicon.png")} {
 		b, err := os.ReadFile(p)
 		if err != nil {
 			continue
@@ -772,7 +780,7 @@ func restoreZip(data []byte) error {
 	}
 	allowed := map[string]bool{
 		filepath.Base(statePath): true, filepath.Base(dbPath): true,
-		filepath.Base(circoloPath): true, "tenniscall.csv": true,
+		filepath.Base(circoloPath): true, "tenniscall.csv": true, "tclogo.png": true, "favicon.png": true,
 	}
 	files := map[string][]byte{}
 	for _, f := range zr.File {
@@ -818,7 +826,7 @@ func restoreZip(data []byte) error {
 // ---------- pagina pubblica ----------
 
 func isPublicPath(p string) bool {
-	return p == "/pubblico" || p == "/pubblico/" || p == "/api/pub" || p == "/logo.png"
+	return p == "/pubblico" || p == "/pubblico/" || p == "/api/pub" || p == "/logo.png" || p == "/favicon.png" || p == "/favicon.ico"
 }
 
 type pubCat struct {
@@ -1061,6 +1069,19 @@ func registerExtra(mux *http.ServeMux) {
 		return &st, nil
 	}))
 
+	// logo e favicon del circolo
+	mux.HandleFunc("/api/logo", func(w http.ResponseWriter, r *http.Request) { imgUpload(w, r, "tclogo.png", 0) })
+	mux.HandleFunc("/api/favicon", func(w http.ResponseWriter, r *http.Request) { imgUpload(w, r, "favicon.png", 128) })
+	mux.HandleFunc("/api/logo/reset", func(w http.ResponseWriter, r *http.Request) { imgReset(w, r, "tclogo.png") })
+	mux.HandleFunc("/api/favicon/reset", func(w http.ResponseWriter, r *http.Request) { imgReset(w, r, "favicon.png") })
+	favicon := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Write(faviconBytes())
+	}
+	mux.HandleFunc("/favicon.png", favicon)
+	mux.HandleFunc("/favicon.ico", favicon)
+
 	// backup / ripristino
 	mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -1113,4 +1134,154 @@ func registerExtra(mux *http.ServeMux) {
 		w.Header().Set("X-Robots-Tag", "noindex")
 		w.Write(b)
 	})
+}
+
+// ---------- logo e favicon ----------
+
+func jsonErr(w http.ResponseWriter, code int, msg string) {
+	b, _ := json.Marshal(map[string]string{"error": msg})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write(b)
+}
+
+// resizeBox scala l'immagine con una media dei pixel (buona qualita' in riduzione, semplice in ingrandimento).
+func resizeBox(src image.Image, dw, dh int) *image.NRGBA {
+	b := src.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	dst := image.NewNRGBA(image.Rect(0, 0, dw, dh))
+	for y := 0; y < dh; y++ {
+		sy0, sy1 := y*sh/dh, (y+1)*sh/dh
+		if sy1 <= sy0 {
+			sy1 = sy0 + 1
+		}
+		for x := 0; x < dw; x++ {
+			sx0, sx1 := x*sw/dw, (x+1)*sw/dw
+			if sx1 <= sx0 {
+				sx1 = sx0 + 1
+			}
+			var rr, gg, bb, aa, n uint64
+			for sy := sy0; sy < sy1 && sy < sh; sy++ {
+				for sx := sx0; sx < sx1 && sx < sw; sx++ {
+					cr, cg, cb, ca := src.At(b.Min.X+sx, b.Min.Y+sy).RGBA()
+					rr, gg, bb, aa, n = rr+uint64(cr), gg+uint64(cg), bb+uint64(cb), aa+uint64(ca), n+1
+				}
+			}
+			if n == 0 {
+				continue
+			}
+			rr, gg, bb, aa = rr/n, gg/n, bb/n, aa/n
+			if aa > 0 {
+				rr, gg, bb = rr*0xffff/aa, gg*0xffff/aa, bb*0xffff/aa
+			}
+			dst.SetNRGBA(x, y, color.NRGBA{R: uint8(rr >> 8), G: uint8(gg >> 8), B: uint8(bb >> 8), A: uint8(aa >> 8)})
+		}
+	}
+	return dst
+}
+
+// limitSize riduce l'immagine se il lato piu' lungo supera max.
+func limitSize(img image.Image, max int) image.Image {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w <= max && h <= max {
+		return img
+	}
+	if w >= h {
+		return resizeBox(img, max, h*max/w)
+	}
+	return resizeBox(img, w*max/h, max)
+}
+
+// fitSquare mette l'immagine al centro di un quadrato trasparente size x size.
+func fitSquare(img image.Image, size int) *image.NRGBA {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	dw, dh := size, size
+	if w >= h {
+		dh = h * size / w
+	} else {
+		dw = w * size / h
+	}
+	if dw < 1 {
+		dw = 1
+	}
+	if dh < 1 {
+		dh = 1
+	}
+	sc := resizeBox(img, dw, dh)
+	out := image.NewNRGBA(image.Rect(0, 0, size, size))
+	ox, oy := (size-dw)/2, (size-dh)/2
+	for y := 0; y < dh; y++ {
+		for x := 0; x < dw; x++ {
+			out.SetNRGBA(ox+x, oy+y, sc.NRGBAAt(x, y))
+		}
+	}
+	return out
+}
+
+func faviconBytes() []byte {
+	if b, err := os.ReadFile(filepath.Join(dataDir, "favicon.png")); err == nil && len(b) > 0 {
+		return b
+	}
+	if img, _, err := image.Decode(bytes.NewReader(logoBytes())); err == nil {
+		var buf bytes.Buffer
+		if png.Encode(&buf, fitSquare(img, 128)) == nil {
+			return buf.Bytes()
+		}
+	}
+	return logoDefault
+}
+
+func imgUpload(w http.ResponseWriter, r *http.Request, name string, square int) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "metodo non consentito", http.StatusMethodNotAllowed)
+		return
+	}
+	data, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
+	if err != nil || len(data) == 0 {
+		jsonErr(w, 400, "file non ricevuto")
+		return
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		jsonErr(w, 400, "immagine non valida: usa un file PNG, JPG o GIF")
+		return
+	}
+	var out image.Image
+	if square > 0 {
+		out = fitSquare(img, square)
+	} else {
+		out = limitSize(img, 800)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, out); err != nil {
+		jsonErr(w, 500, err.Error())
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	path := filepath.Join(dataDir, name)
+	if err := os.WriteFile(path+".tmp", buf.Bytes(), 0644); err != nil {
+		jsonErr(w, 500, "impossibile salvare il file: "+err.Error())
+		return
+	}
+	if err := os.Rename(path+".tmp", path); err != nil {
+		jsonErr(w, 500, "impossibile salvare il file: "+err.Error())
+		return
+	}
+	refresh()
+	writeJSON(w, 200, &st)
+}
+
+func imgReset(w http.ResponseWriter, r *http.Request, name string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "metodo non consentito", http.StatusMethodNotAllowed)
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	os.Remove(filepath.Join(dataDir, name))
+	refresh()
+	writeJSON(w, 200, &st)
 }
