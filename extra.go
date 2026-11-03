@@ -1061,6 +1061,38 @@ func registerExtra(mux *http.ServeMux) {
 		return &st, nil
 	}))
 
+	// scarica il CSV da TennisCall (il server fa l'accesso) e lo restituisce al browser, che lo salva in Download
+	mux.HandleFunc("/api/tc/download", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "metodo non consentito", http.StatusMethodNotAllowed)
+			return
+		}
+		var b struct {
+			User     string `json:"user"`
+			Password string `json:"password"`
+		}
+		if err := readBody(r, &b); err != nil || strings.TrimSpace(b.User) == "" || b.Password == "" {
+			writeJSONNoState(w, 400, map[string]string{"error": "inserisci utente e password"})
+			return
+		}
+		mu.Lock()
+		target := strings.TrimSpace(st.TcURL)
+		if target == "" {
+			target = defaultTcURL
+		}
+		st.TcUser = strings.TrimSpace(b.User)
+		save()
+		mu.Unlock()
+		data, steps, err := tcFetchExport(target, strings.TrimSpace(b.User), b.Password) // rete: senza lock
+		if err != nil {
+			writeJSONNoState(w, 400, map[string]interface{}{"error": err.Error(), "steps": steps})
+			return
+		}
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="tenniscall_iscritti_`+time.Now().Format("2006-01-02")+`.csv"`)
+		w.Write(data)
+	})
+
 	// backup / ripristino
 	mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -1113,4 +1145,11 @@ func registerExtra(mux *http.ServeMux) {
 		w.Header().Set("X-Robots-Tag", "noindex")
 		w.Write(b)
 	})
+}
+
+func writeJSONNoState(w http.ResponseWriter, code int, v interface{}) {
+	b, _ := json.Marshal(v)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write(b)
 }
