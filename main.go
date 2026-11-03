@@ -51,6 +51,8 @@ type Player struct {
 	Riga       int      `json:"riga"`
 	RankFile   string   `json:"rankFile"`
 	Storico    []Cambio `json:"storico"`
+	Cat        string   `json:"cat,omitempty"`    // solo coppie: DM, DF, DX
+	Membri     []int    `json:"membri,omitempty"` // solo coppie: ID dei due giocatori
 }
 
 type Cambio struct {
@@ -61,10 +63,13 @@ type Cambio struct {
 }
 
 type Match struct {
-	A     int    `json:"a"`
-	B     int    `json:"b"`
-	W     int    `json:"w"`
-	Score string `json:"score"`
+	A     int      `json:"a"`
+	B     int      `json:"b"`
+	W     int      `json:"w"`
+	Score string   `json:"score"`
+	Sets  []SetRes `json:"sets,omitempty"`
+	Ex    string   `json:"ex,omitempty"`   // "", "wo" (a tavolino) o "rit" (ritiro)
+	Data  string   `json:"data,omitempty"` // data del risultato AAAA-MM-GG
 }
 
 type Draw struct {
@@ -72,6 +77,7 @@ type Draw struct {
 	Rounds  [][]Match   `json:"rounds"`
 	Seeds   map[int]int `json:"seeds"`
 	Created string      `json:"created"`
+	Fmt     string      `json:"fmt,omitempty"` // "bo3" oppure "stb" (2 set + tie-break a 10)
 }
 
 type State struct {
@@ -89,6 +95,15 @@ type State struct {
 	ServerMode    bool   `json:"serverMode"`
 	TcURL         string `json:"tcUrl"`
 	TcUser        string `json:"tcUser"`
+
+	Coppie   []Player             `json:"coppie"`
+	RRs      map[string]*RR       `json:"rrs"`
+	TorneoID int                  `json:"torneoId"`
+	Params   PuntiParams          `json:"params"`
+	Ledger   []LedgerRow          `json:"ledger"`
+	Circolo  []RankRow            `json:"circolo"`
+	Interna  []RankRow            `json:"interna"`
+	RRStand  map[string][][]Stand `json:"rrStand"`
 }
 
 var (
@@ -452,7 +467,12 @@ func makeDraw(players []Player, seeds int, rng *rand.Rand) *Draw {
 	}
 	ps := append([]Player(nil), players...)
 	rng.Shuffle(len(ps), func(i, j int) { ps[i], ps[j] = ps[j], ps[i] })
-	sort.SliceStable(ps, func(i, j int) bool { return ps[i].Forza < ps[j].Forza })
+	sort.SliceStable(ps, func(i, j int) bool {
+		if ps[i].Forza != ps[j].Forza {
+			return ps[i].Forza < ps[j].Forza
+		}
+		return internalPts[ps[i].ID] > internalPts[ps[j].ID]
+	})
 	if seeds > n {
 		seeds = n
 	}
@@ -502,13 +522,15 @@ func recompute(d *Draw) {
 			}
 			switch {
 			case m.A == -1 && m.B > 0:
-				m.W, m.Score = m.B, ""
+				m.reset()
+				m.W = m.B
 			case m.B == -1 && m.A > 0:
-				m.W, m.Score = m.A, ""
+				m.reset()
+				m.W = m.A
 			case m.A == -1 && m.B == -1:
 				m.W = -1
 			case m.W != 0 && m.W != m.A && m.W != m.B:
-				m.W, m.Score = 0, ""
+				m.reset()
 			}
 		}
 	}
@@ -541,14 +563,17 @@ func writeJSONFile(path string, v interface{}) {
 // save scrive due file: il torneo (tabelloni, risultati) e il database interno
 // delle classifiche (giocatori, classifiche, storico).
 func save() {
+	refresh()
 	t := st
 	t.Players, t.FitpURL, t.Aggiornamento, t.SourceMod, t.ServerMode, t.TcURL, t.TcUser = nil, "", "", "", false, "", ""
+	t.Ledger, t.Circolo, t.Interna, t.RRStand, t.Params, t.TorneoID = nil, nil, nil, nil, PuntiParams{}, 0
 	writeJSONFile(statePath, &t)
 	writeJSONFile(dbPath, &dbFile{Players: st.Players, NextID: st.NextID, Source: st.Source, FitpURL: st.FitpURL, Aggiornamento: st.Aggiornamento, SourceMod: st.SourceMod, TcURL: st.TcURL, TcUser: st.TcUser})
+	writeCircolo()
 }
 
 func loadState() {
-	st = State{Title: "Torneo Molto Sociale", Luogo: "Tennis Club Salemi", NextID: 1, Draws: map[string]*Draw{}}
+	st = State{Title: "Torneo Molto Sociale", Luogo: "Tennis Club Salemi", NextID: 1, Draws: map[string]*Draw{}, RRs: map[string]*RR{}}
 	if b, err := os.ReadFile(statePath); err == nil {
 		var s State
 		if json.Unmarshal(b, &s) == nil {
@@ -566,6 +591,10 @@ func loadState() {
 		}
 	}
 	// (se il database non esiste ancora, i giocatori della vecchia versione restano e vengono migrati da save())
+	if st.RRs == nil {
+		st.RRs = map[string]*RR{}
+	}
+	loadCircolo()
 	maxID := 0
 	for _, p := range st.Players {
 		if p.ID > maxID {
@@ -704,7 +733,7 @@ func savePDF(which string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := map[string]string{"all": "Tabelloni", "M": "Tabellone_Maschile", "F": "Tabellone_Femminile"}[which]
+	name := pdfName(which)
 	path := filepath.Join(dataDir, fmt.Sprintf("TC_Salemi_%s_%s.pdf", name, time.Now().Format("2006-01-02_150405")))
 	if err := os.WriteFile(path, b, 0644); err != nil {
 		return "", err
@@ -827,6 +856,22 @@ func routes() *http.ServeMux {
 		var b struct{ ID int }
 		if err := readBody(r, &b); err != nil {
 			return nil, err
+		}
+		for _, c := range st.Coppie {
+			for _, mm := range c.Membri {
+				if mm == b.ID {
+					return nil, errors.New("il giocatore fa parte di una coppia di doppio: elimina prima la coppia")
+				}
+			}
+		}
+		for _, rr := range st.RRs {
+			for _, g := range rr.Groups {
+				for _, id := range g {
+					if id == b.ID {
+						return nil, errors.New("il giocatore e' in un girone: elimina prima il girone")
+					}
+				}
+			}
 		}
 		for _, d := range st.Draws {
 			for _, m := range d.Rounds[0] {
@@ -993,26 +1038,21 @@ func routes() *http.ServeMux {
 		var b struct {
 			Sex   string `json:"sex"`
 			Seeds int    `json:"seeds"`
+			Fmt   string `json:"fmt"`
 		}
 		if err := readBody(r, &b); err != nil {
 			return nil, err
 		}
-		if b.Sex != "M" && b.Sex != "F" {
-			return nil, errors.New("sesso non valido")
-		}
-		var pl []Player
-		for _, p := range st.Players {
-			if p.Iscritto && p.Sesso == b.Sex {
-				pl = append(pl, p)
-			}
-		}
-		if len(pl) < 2 {
-			return nil, errors.New("servono almeno 2 iscritti per fare il tabellone")
+		pl, err := playersForKey(b.Sex)
+		if err != nil {
+			return nil, err
 		}
 		if b.Seeds < 0 {
 			b.Seeds = 0
 		}
 		st.Draws[b.Sex] = makeDraw(pl, b.Seeds, rand.New(rand.NewSource(time.Now().UnixNano())))
+		st.Draws[b.Sex].Fmt = normFmt(b.Fmt)
+		delete(st.RRs, b.Sex)
 		return &st, nil
 	}))
 	mux.HandleFunc("/api/swap", api(func(r *http.Request) (interface{}, error) {
@@ -1065,7 +1105,7 @@ func routes() *http.ServeMux {
 		*pa, *pb = *pb, *pa
 		for _, k := range aff {
 			m := &d.Rounds[k.r][k.i]
-			m.W, m.Score = 0, ""
+			m.reset()
 		}
 		recompute(d)
 		return &st, nil
@@ -1173,12 +1213,23 @@ func routes() *http.ServeMux {
 			if *b.Winner != 0 && *b.Winner != m.A && *b.Winner != m.B {
 				return nil, errors.New("vincitore non valido")
 			}
+			if m.W != *b.Winner {
+				m.Sets, m.Ex = nil, ""
+			}
 			m.W = *b.Winner
+			if m.W == 0 {
+				m.Data = ""
+			} else if m.Data == "" {
+				m.Data = todayISO()
+			}
 		}
 		if b.Score != nil {
 			s := strings.TrimSpace(*b.Score)
 			if len([]rune(s)) > 40 {
 				s = string([]rune(s)[:40])
+			}
+			if s != m.Score {
+				m.Sets = nil
 			}
 			m.Score = s
 		}
@@ -1219,7 +1270,7 @@ func routes() *http.ServeMux {
 		if err := readBody(r, &b); err != nil {
 			return nil, err
 		}
-		if b.Which != "M" && b.Which != "F" {
+		if !validCat(b.Which) {
 			b.Which = "all"
 		}
 		path, err := savePDF(b.Which)
@@ -1233,7 +1284,7 @@ func routes() *http.ServeMux {
 		mu.Lock()
 		defer mu.Unlock()
 		which := r.URL.Query().Get("which")
-		if which != "M" && which != "F" {
+		if !validCat(which) {
 			which = "all"
 		}
 		b, err := buildPDF(which)
@@ -1242,10 +1293,11 @@ func routes() *http.ServeMux {
 			return
 		}
 		w.Header().Set("Content-Type", "application/pdf")
-		fn := map[string]string{"all": "Tabelloni", "M": "Tabellone_Maschile", "F": "Tabellone_Femminile"}[which]
+		fn := pdfName(which)
 		w.Header().Set("Content-Disposition", `attachment; filename="TC_Salemi_`+fn+`.pdf"`)
 		w.Write(b)
 	})
+	registerExtra(mux)
 	return mux
 }
 
@@ -1262,7 +1314,7 @@ func isOurs(port int) bool {
 
 func basicAuth(next http.Handler, user, pass string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" {
+		if r.URL.Path == "/healthz" || isPublicPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -1316,6 +1368,7 @@ func main() {
 	dataDir = pickDataDir(envOr(*dataF, "TORNEO_DATA"))
 	statePath = filepath.Join(dataDir, "torneo_tc_salemi.json")
 	dbPath = filepath.Join(dataDir, "classifica_db.json")
+	circoloPath = filepath.Join(dataDir, "classifica_circolo.json")
 	if !serverMode {
 		if lf, err := os.OpenFile(filepath.Join(dataDir, "torneo_log.txt"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644); err == nil {
 			log.SetOutput(lf)
@@ -1575,7 +1628,7 @@ func enterRound(sex string, id, R int, confirm bool) (msg string, need int, err 
 	}
 	for _, k := range aff {
 		m := &d.Rounds[k.r][k.i]
-		m.W, m.Score = 0, ""
+		m.reset()
 	}
 	recompute(d)
 	msg = fmt.Sprintf("%s ora entra al turno %d.", playerName(id), R)

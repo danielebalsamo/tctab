@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/png"
 	"math"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -284,10 +285,7 @@ func fitText(cands []string, maxW, size float64, bold bool) string {
 }
 
 func sexTitle(sex string) string {
-	if sex == "F" {
-		return "Singolare femminile"
-	}
-	return "Singolare maschile"
+	return catTitle(sex)
 }
 
 func drawBracket(pg *page, sex string, d *Draw, pl map[int]*Player, title, date, luogo, stamp string, logo *pdfImg) {
@@ -431,9 +429,19 @@ func buildPDF(which string) ([]byte, error) {
 	for i := range st.Players {
 		pl[st.Players[i].ID] = &st.Players[i]
 	}
+	for i := range st.Coppie {
+		pl[st.Coppie[i].ID] = &st.Coppie[i]
+	}
 	stamp := nowStamp()
-	for _, sex := range []string{"M", "F"} {
+	for _, sex := range catKeys {
 		if which != "all" && which != sex {
+			continue
+		}
+		if rr := st.RRs[sex]; rr != nil {
+			stand := rrStandings(rr)
+			for gi := range rr.Groups {
+				drawRRGroup(doc.newPage(), sex, rr, gi, stand[gi], pl, st.Title, st.Date, st.Luogo, stamp, doc.logo)
+			}
 			continue
 		}
 		d := st.Draws[sex]
@@ -447,4 +455,91 @@ func buildPDF(which string) ([]byte, error) {
 		return nil, fmt.Errorf("nessun tabellone da esportare: fai prima il sorteggio")
 	}
 	return doc.bytes(), nil
+}
+
+// drawRRGroup disegna una pagina per ogni girone: classifica a sinistra, partite a destra.
+func drawRRGroup(pg *page, key string, rr *RR, gi int, stand []Stand, pl map[int]*Player, title, date, luogo, stamp string, logo *pdfImg) {
+	pg.rect(0, 0, pg.w, 58, 0.14)
+	tx := 28.0
+	if logo != nil {
+		lh := 44.0
+		lw := lh * float64(logo.W) / float64(logo.H)
+		if lw > 110 {
+			lw = 110
+			lh = lw * float64(logo.H) / float64(logo.W)
+		}
+		pg.rect(18, 5, lw+8, 48, 1)
+		pg.image(22, 5+(48-lh)/2, lw, lh)
+		tx = 18 + lw + 8 + 14
+	}
+	pg.text(tx, 28, 19, stBold, 1, title)
+	pg.text(tx, 47, 12, stNormal, 0.85, fmt.Sprintf("%s - girone %c", catTitle(key), 'A'+gi))
+	right := strings.TrimSpace(strings.Trim(strings.Join([]string{luogo, date}, "  -  "), " -"))
+	if right != "" {
+		w := textWidth(right, 10, false)
+		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
+	}
+	name := func(id int, maxW, size float64) string {
+		p := pl[id]
+		if p == nil {
+			return "?"
+		}
+		full, short := p.display()
+		return fitText([]string{full, short}, maxW, size, false)
+	}
+	// classifica del girone
+	pg.text(28, 90, 9, stBold, 0.25, "Classifica")
+	hx := []float64{28, 48, 250, 276, 302, 332, 378}
+	for i, h := range []string{"#", "Giocatore", "V", "P", "Set", "Game", "Pt"} {
+		pg.text(hx[i], 108, 8, stBold, 0.4, h)
+	}
+	pg.line(28, 112, 430, 112, 0.5, 0.5)
+	y := 128.0
+	for _, s := range stand {
+		pg.text(hx[0], y, 10, stNormal, 0, strconv.Itoa(s.Pos))
+		pg.text(hx[1], y, 10, stNormal, 0, name(s.ID, 195, 10))
+		pg.text(hx[2], y, 10, stNormal, 0, strconv.Itoa(s.V))
+		pg.text(hx[3], y, 10, stNormal, 0, strconv.Itoa(s.P))
+		pg.text(hx[4], y, 10, stNormal, 0, fmt.Sprintf("%d-%d", s.SV, s.SP))
+		pg.text(hx[5], y, 10, stNormal, 0, fmt.Sprintf("%d-%d", s.GV, s.GP))
+		pg.text(hx[6], y, 10, stBold, 0, strconv.Itoa(s.Pt))
+		pg.line(28, y+5, 430, y+5, 0.3, 0.8)
+		y += 20
+	}
+	// partite
+	pg.text(470, 90, 9, stBold, 0.25, "Partite")
+	pg.line(470, 112, 814, 112, 0.5, 0.5)
+	my := 128.0
+	for _, m := range rr.Matches {
+		if m.G != gi {
+			continue
+		}
+		if my > 548 {
+			break
+		}
+		pg.text(470, my, 8, stNormal, 0.4, fmt.Sprintf("T%d", m.R))
+		a, b := name(m.A, 120, 9), name(m.B, 120, 9)
+		stA, stB := stNormal, stNormal
+		if m.W == m.A {
+			stA = stBold
+		} else if m.W == m.B {
+			stB = stBold
+		}
+		pg.text(492, my, 9, stA, 0, a)
+		pg.text(492+125, my, 9, stNormal, 0.5, "-")
+		pg.text(492+135, my, 9, stB, 0, b)
+		if m.W > 0 && strings.TrimSpace(m.Score) != "" {
+			pg.text(492+262, my, 8.5, stNormal, 0.25, m.Score)
+		}
+		my += 16
+	}
+	pg.line(28, 566, pg.w-28, 566, 0.4, 0.7)
+	pg.text(28, 579, 7, stNormal, 0.4, "Vittoria 2 punti, sconfitta 1, W.O. 0. A pari punti: scontro diretto, poi differenza set e game.    Formato: "+fmtLabel(rr.Fmt)+"    Generato il "+stamp)
+}
+
+func fmtLabel(f string) string {
+	if f == "stb" {
+		return "2 set + tie-break a 10"
+	}
+	return "al meglio dei 3 set"
 }

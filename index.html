@@ -83,6 +83,36 @@ label.f input{font-size:14px;color:var(--ink)}
 nav button .ic{display:none;font-size:18px;line-height:1}
 nav button .ls{display:none}
 input[type=checkbox]{width:18px;height:18px}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.chip{white-space:nowrap;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:8px 14px;cursor:pointer;font-size:14px}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.rs{width:100%;text-align:left;font-size:13px;white-space:normal}
+.srow,.sh{display:grid;grid-template-columns:1fr 64px 12px 64px;gap:8px;align-items:center;margin:6px 0}
+.sh{font-size:12px;color:var(--mut);margin-bottom:0}
+.srow input{width:100%;padding:9px 6px;border:1px solid var(--line);border-radius:6px;font-size:16px;text-align:center}
+.st{display:grid;grid-template-columns:26px 1fr 34px 34px 34px 56px 62px 40px;gap:6px 8px;align-items:center}
+.st .h{font-size:11px;text-transform:uppercase;color:var(--mut)}
+.st .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrm{display:grid;grid-template-columns:36px 1fr auto;gap:6px;padding:9px 4px;border-top:1px solid #eceeed;cursor:pointer;align-items:center}
+.rrm:hover{background:#f4f8f5}
+.rrm .t{color:var(--mut);font-size:12px}
+.rk-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #eceeed}
+.crow{display:grid;grid-template-columns:30px 1fr auto;gap:2px 10px;padding:9px 0;border-top:1px solid #eceeed;align-items:center}
+.crow .pos{color:var(--mut);font-weight:600}
+.crow .cp{text-align:right}
+.crow .cp b{font-size:17px}
+.crow .cp small{display:block;color:var(--mut);font-size:11px}
+.crow .cs{grid-column:2/4;color:var(--mut);font-size:12px}
+.lrow{display:grid;grid-template-columns:78px 1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid #eceeed;font-size:13px}
+.lrow .cs{grid-column:2/4;color:var(--mut);font-size:12px}
+@media (max-width:760px){
+  .hm{display:none!important}
+  .st{grid-template-columns:22px 1fr 28px 28px 50px 34px}
+  .chip{padding:10px 14px}
+  .srow input{padding:12px 6px}
+  .lrow{grid-template-columns:70px 1fr}
+  .lrow .pt{grid-column:2}
+}
 @media (max-width:760px){
   body{font-size:15px;-webkit-text-size-adjust:100%}
   header{padding:8px 12px;gap:8px;position:static;flex-wrap:nowrap}
@@ -163,8 +193,8 @@ input[type=checkbox]{width:18px;height:18px}
   <nav id="nav">
     <button data-tab="iscritti"><span class="ic">&#128101;</span><span>Iscritti</span></button>
     <button data-tab="class"><span class="ic">&#128200;</span><span>Classifica</span></button>
-    <button data-tab="M"><span class="ic">&#9794;</span><span class="ll">Singolare maschile</span><span class="ls">Maschile</span></button>
-    <button data-tab="F"><span class="ic">&#9792;</span><span class="ll">Singolare femminile</span><span class="ls">Femminile</span></button>
+    <button data-tab="tab"><span class="ic">&#127934;</span><span>Tabelloni</span></button>
+    <button data-tab="circ"><span class="ic">&#127942;</span><span class="ll">Classifica circolo</span><span class="ls">Circolo</span></button>
     <button data-tab="imp"><span class="ic">&#9881;</span><span class="ll">Impostazioni</span><span class="ls">Impost.</span></button>
     <button data-tab="help"><span class="ic">&#10067;</span><span>Guida</span></button>
   </nav>
@@ -174,7 +204,12 @@ input[type=checkbox]{width:18px;height:18px}
 <main id="main"></main>
 <script>
 "use strict";
-let S = null, tab = "iscritti", filterText = "", editMode = false, swapSel = null;
+let S = null, tab = "iscritti", filterText = "", editMode = false, swapSel = null, cat = "M", cView = "circolo";
+const CATS = [["M", "Sing. M"], ["F", "Sing. F"], ["DM", "Doppio M"], ["DF", "Doppio F"], ["DX", "Misto"]];
+const catName = k => ({ M: "Singolare maschile", F: "Singolare femminile", DM: "Doppio maschile", DF: "Doppio femminile", DX: "Doppio misto" }[k] || k);
+const isDbl = k => String(k).charAt(0) === "D";
+const fmtName = f => f === "stb" ? "2 set + tie-break a 10" : "al meglio dei 3 set";
+const isoIt = d => d ? String(d).split("-").reverse().join("/") : "";
 
 const $ = (s, r) => (r || document).querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -204,7 +239,7 @@ async function act(path, body) {
   return j;
 }
 
-const byId = () => { const m = {}; S.players.forEach(p => m[p.id] = p); return m; };
+const byId = () => { const m = {}; S.players.forEach(p => m[p.id] = p); (S.coppie || []).forEach(p => m[p.id] = p); return m; };
 const fullName = p => (p.cognome + " " + p.nome).trim();
 
 function counts() {
@@ -214,7 +249,7 @@ function counts() {
 }
 
 function render() {
-  if (S) { S.players = S.players || []; S.draws = S.draws || {}; }
+  if (S) { S.players = S.players || []; S.draws = S.draws || {}; S.rrs = S.rrs || {}; S.coppie = S.coppie || []; S.ledger = S.ledger || []; S.circolo = S.circolo || []; S.interna = S.interna || []; S.rrStand = S.rrStand || {}; S.params = S.params || { vittoria: 10, sconfitta: 6, mesi: 12 }; }
   $("#ttl").textContent = S.title || "Torneo Sociale";
   document.title = S.title || "Torneo Sociale";
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
@@ -224,7 +259,8 @@ function render() {
   else if (tab === "imp") renderImp();
   else if (tab === "help") renderHelp();
   else if (tab === "class") renderClassifica();
-  else renderDraw(tab);
+  else if (tab === "circ") renderCircolo();
+  else renderDraw(cat);
   const br2 = $(".bracket"); if (br2) { br2.scrollLeft = sc.x; br2.scrollTop = sc.y; }
 }
 
@@ -339,31 +375,147 @@ const sexName = s => s === "M" ? "maschile" : "femminile";
 
 function defaultSeeds(n) { let size = 2; while (size < n) size *= 2; return size >= 32 ? 8 : size >= 16 ? 4 : size >= 8 ? 2 : 0; }
 
+function setMain(html) {
+  let chips = "";
+  if (tab === "tab") chips = '<div class="chips">' + CATS.map(c => '<button class="chip' + (c[0] === cat ? " on" : "") + '" data-cat="' + c[0] + '">' + c[1] + '</button>').join("") + '</div>';
+  $("#main").innerHTML = chips + html;
+  document.querySelectorAll(".chip").forEach(b => b.onclick = () => { cat = b.dataset.cat; editMode = false; swapSel = null; render(); });
+}
+
+function teamBuilder(key) {
+  const teams = (S.coppie || []).filter(c => c.cat === key);
+  const used = new Set(); teams.forEach(t => (t.membri || []).forEach(x => used.add(x)));
+  const free = sx => S.players.filter(p => p.iscritto && !used.has(p.id) && (!sx || p.sesso === sx)).sort((a, b) => fullName(a).localeCompare(fullName(b), "it"));
+  const sa = key === "DM" ? "M" : key === "DF" ? "F" : key === "DX" ? "M" : "";
+  const sb = key === "DM" ? "M" : key === "DF" ? "F" : key === "DX" ? "F" : "";
+  const opt = list => '<option value="">- scegli -</option>' + list.map(p => '<option value="' + p.id + '">' + esc(fullName(p)) + (p.classifica ? " (" + esc(p.classifica) + ")" : "") + '</option>').join("");
+  const labA = key === "DX" ? "Uomo" : "Giocatore 1", labB = key === "DX" ? "Donna" : "Giocatore 2";
+  return '<div class="card"><h2>Coppie (' + teams.length + ')</h2>' +
+    (teams.length ? teams.map(t => '<div class="rk-row"><span>' + esc(t.cognome) + ' <span class="muted">' + esc(t.classifica) + '</span></span><button class="r delT" data-id="' + t.id + '" title="Elimina la coppia">&times;</button></div>').join("") : '<p class="hint">Nessuna coppia: componile qui sotto con i giocatori spuntati in Iscritti.</p>') +
+    '<div class="row" style="margin-top:8px"><label class="f">' + labA + '<select id="ta">' + opt(free(sa)) + '</select></label><label class="f">' + labB + '<select id="tb2">' + opt(free(sb)) + '</select></label><button class="b" id="addT" style="align-self:flex-end">Aggiungi coppia</button></div></div>';
+}
+function bindTeamBuilder(key) {
+  const add = $("#addT");
+  if (add) add.onclick = async () => {
+    const a = +$("#ta").value, b = +$("#tb2").value;
+    if (!a || !b) { toast("Scegli i due giocatori", true); return; }
+    const j = await act("/api/coppia/add", { cat: key, a, b });
+    if (j) render();
+  };
+  document.querySelectorAll(".delT").forEach(el => el.onclick = async () => {
+    const j = await act("/api/coppia/delete", { id: +el.dataset.id });
+    if (j) render();
+  });
+}
+
+function openResult(kind, key, r, mi, m, fmt, pl) {
+  const stb = fmt === "stb";
+  const sets = m.sets && m.sets.length ? m.sets : [];
+  const na = fullName(pl[m.a]), nb = fullName(pl[m.b]);
+  let rows = "";
+  for (let k = 0; k < 3; k++) {
+    const s = sets[k] || {};
+    const lab = (k === 2 && stb) ? "Tie-break a 10" : (k + 1) + "\u00b0 set";
+    rows += '<div class="srow"><span>' + lab + '</span><input type="number" inputmode="numeric" min="0" max="99" class="sa" value="' + (s.a == null ? "" : s.a) + '"><span>-</span><input type="number" inputmode="numeric" min="0" max="99" class="sb" value="' + (s.b == null ? "" : s.b) + '"></div>';
+  }
+  const cur = m.ex ? m.ex + ":" + (m.w === m.a ? "B" : "A") : "";
+  const sel = v => (cur === v ? " selected" : "");
+  const ovl = document.createElement("div");
+  ovl.className = "ovl";
+  ovl.innerHTML = '<div class="dlg"><h2 style="margin:0">Risultato</h2>' +
+    '<div class="sh"><span></span><span style="text-align:center">' + esc(na) + '</span><span></span><span style="text-align:center">' + esc(nb) + '</span></div>' + rows +
+    '<p class="hint" style="margin:0">' + (stb ? "Due set e, se serve, tie-break a 10 al posto del terzo set." : "Al meglio dei 3 set.") + ' Lascia vuoti i set non giocati.</p>' +
+    '<label class="f">Esito<select id="rsEx"><option value="">Regolare</option>' +
+    '<option value="rit:A"' + sel("rit:A") + '>Ritiro di ' + esc(na) + '</option><option value="rit:B"' + sel("rit:B") + '>Ritiro di ' + esc(nb) + '</option>' +
+    '<option value="wo:A"' + sel("wo:A") + '>W.O.: non si presenta ' + esc(na) + '</option><option value="wo:B"' + sel("wo:B") + '>W.O.: non si presenta ' + esc(nb) + '</option></select></label>' +
+    '<div class="row"><button class="b" id="rsOk">Salva</button><button class="g" id="rsNo">Annulla</button><span style="flex:1"></span>' + (m.w > 0 ? '<button class="r" id="rsClr">Cancella risultato</button>' : "") + '</div></div>';
+  document.body.appendChild(ovl);
+  ovl.onclick = e => { if (e.target === ovl) ovl.remove(); };
+  ovl.querySelector("#rsNo").onclick = () => ovl.remove();
+  ovl.querySelector("#rsOk").onclick = async () => {
+    const sa = ovl.querySelectorAll(".sa"), sb = ovl.querySelectorAll(".sb"), out = [];
+    for (let k = 0; k < 3; k++) {
+      if (sa[k].value === "" && sb[k].value === "") continue;
+      out.push({ a: parseInt(sa[k].value || "0", 10), b: parseInt(sb[k].value || "0", 10) });
+    }
+    const es = ovl.querySelector("#rsEx").value.split(":");
+    const j = await act("/api/setscore", { kind, key, round: r, match: mi, sets: out, ex: es[0] || "", perde: es[1] || "" });
+    if (j) { ovl.remove(); toast("Risultato salvato"); render(); }
+  };
+  const clr = ovl.querySelector("#rsClr");
+  if (clr) clr.onclick = async () => {
+    const j = await act("/api/setscore", { kind, key, round: r, match: mi, clear: true });
+    if (j) { ovl.remove(); render(); }
+  };
+}
+
+function renderRR(key) {
+  const rr = S.rrs[key], pl = byId(), stand = (S.rrStand && S.rrStand[key]) || [];
+  const nm = id => pl[id] ? fullName(pl[id]) : "?";
+  let html = '<div class="card"><div class="row"><h2 style="margin:0">' + catName(key) + ' - girone all\'italiana</h2><span class="tag">' + fmtName(rr.fmt) + '</span><span class="muted">Sorteggio del ' + esc(rr.created) + '</span><span style="flex:1"></span><button class="g" id="pdfOne">Esporta PDF</button><button class="r" id="delRR">Elimina gironi</button></div>' +
+    '<p class="hint">Tocca una partita per inserire il risultato. Punti: 2 per la vittoria, 1 per la sconfitta giocata, 0 per il W.O. A pari punti contano lo scontro diretto (se sono in due), poi la differenza set e la differenza game.</p></div>';
+  rr.groups.forEach((g, gi) => {
+    const st = stand[gi] || [];
+    html += '<div class="card"><h2>Girone ' + String.fromCharCode(65 + gi) + '</h2><div class="st"><span class="h">#</span><span class="h">Giocatore</span><span class="h hm">G</span><span class="h">V</span><span class="h">P</span><span class="h">Set</span><span class="h hm">Game</span><span class="h">Pt</span>';
+    st.forEach(s => { html += '<span>' + s.pos + '</span><span class="n">' + esc(nm(s.id)) + '</span><span class="hm">' + s.g + '</span><span>' + s.v + '</span><span>' + s.p + '</span><span>' + s.sv + '-' + s.sp + '</span><span class="hm">' + s.gv + '-' + s.gp + '</span><b>' + s.pt + '</b>'; });
+    html += '</div><div style="margin-top:10px">';
+    rr.matches.forEach((m, idx) => {
+      if (m.g !== gi) return;
+      const a = m.w === m.a ? '<b>' + esc(nm(m.a)) + '</b>' : esc(nm(m.a));
+      const b = m.w === m.b ? '<b>' + esc(nm(m.b)) + '</b>' : esc(nm(m.b));
+      html += '<div class="rrm" data-idx="' + idx + '"><span class="t">T' + m.r + '</span><span>' + a + ' - ' + b + '</span><span class="muted">' + (m.w > 0 ? esc(m.score) : "da giocare") + '</span></div>';
+    });
+    html += '</div></div>';
+  });
+  setMain(html);
+  $("#pdfOne").onclick = () => savePdf(key);
+  $("#delRR").onclick = async () => {
+    if (!confirm("Eliminare i gironi e tutti i risultati?")) return;
+    const j = await act("/api/rr/delete", { key }); if (j) render();
+  };
+  document.querySelectorAll(".rrm").forEach(el => el.onclick = () => {
+    const idx = +el.dataset.idx;
+    openResult("R", key, 0, idx, rr.matches[idx], rr.fmt, pl);
+  });
+}
+
 function renderDraw(sex) {
+  if (S.rrs && S.rrs[sex]) { renderRR(sex); return; }
   const d = S.draws && S.draws[sex];
-  const n = counts()[sex] || 0;
+  const dbl = isDbl(sex);
+  const n = dbl ? (S.coppie || []).filter(c => c.cat === sex).length : (counts()[sex] || 0);
   const pl = byId();
-  let html = `<div class="card"><div class="row"><h2 style="margin:0">Singolare ${sexName(sex)}</h2><span class="tag">Iscritti: ${n}</span>`;
+  let html = `<div class="card"><div class="row"><h2 style="margin:0">${catName(sex)}</h2><span class="tag">${dbl ? "Coppie" : "Iscritti"}: ${n}</span>`;
   if (!d) {
     const ds = defaultSeeds(n);
-    html += `<span style="flex:1"></span>
-      <label class="muted">Teste di serie
-      <select id="seeds">${[0,2,4,8].map(k => `<option value="${k}" ${k === ds ? "selected" : ""}>${k}</option>`).join("")}</select></label>
-      <button class="b" id="doDraw">Sorteggia il tabellone</button></div>
-      <p class="hint">Le teste di serie sono i giocatori con la classifica migliore. Gli altri vengono sorteggiati a caso e i BYE vanno alle teste di serie pi&ugrave; alte.</p></div>`;
-    $("#main").innerHTML = html;
+    html += `</div>
+      <div class="row" style="margin-top:10px">
+        <label class="f">Formula<select id="kind"><option value="E">Eliminazione diretta</option><option value="R">Girone all'italiana</option></select></label>
+        <label class="f">Formato partite<select id="mfmt"><option value="bo3">Al meglio dei 3 set</option><option value="stb">2 set + tie-break a 10</option></select></label>
+        <label class="f" id="lSeeds">Teste di serie<select id="seeds">${[0,2,4,8].map(k => `<option value="${k}" ${k === ds ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+        <label class="f" id="lGr" style="display:none">Gironi<select id="ngr">${[1,2,3,4,5,6,8].map(k => `<option value="${k}">${k}</option>`).join("")}</select></label>
+        <button class="b" id="doDraw" style="align-self:flex-end">Sorteggia</button>
+      </div>
+      <p class="hint">Eliminazione: le teste di serie sono i giocatori con la classifica migliore, gli altri vengono sorteggiati e i BYE vanno alle teste di serie pi&ugrave; alte. Girone: tutti giocano contro tutti; con pi&ugrave; gironi i migliori vengono distribuiti in gironi diversi. A parit&agrave; di classifica FITP (per esempio tra i 4.NC) conta la classifica interna del circolo.</p></div>`;
+    if (dbl) html = teamBuilder(sex) + html;
+    setMain(html);
+    if (dbl) bindTeamBuilder(sex);
+    $("#kind").onchange = () => { const r = $("#kind").value === "R"; $("#lSeeds").style.display = r ? "none" : ""; $("#lGr").style.display = r ? "" : "none"; };
     $("#doDraw").onclick = async () => {
-      const j = await act("/api/draw", { sex, seeds: +$("#seeds").value });
-      if (j) { toast("Tabellone sorteggiato"); render(); }
+      const fmt = $("#mfmt").value;
+      const j = $("#kind").value === "R"
+        ? await act("/api/rr", { key: sex, groups: +$("#ngr").value, fmt })
+        : await act("/api/draw", { sex, seeds: +$("#seeds").value, fmt });
+      if (j) { toast("Sorteggio fatto"); render(); }
     };
     return;
   }
-  html += `<span class="muted">Sorteggio del ${esc(d.created)}</span><span style="flex:1"></span>
+  html += `<span class="tag">${fmtName(d.fmt)}</span><span class="muted">Sorteggio del ${esc(d.created)}</span><span style="flex:1"></span>
     <button class="g" id="pdfOne">Esporta PDF di questo tabellone</button>
     <button class="${editMode ? "b" : "g"}" id="editB">${editMode ? "Fine modifica" : "Modifica sorteggio"}</button>
     <button class="g" id="redo">Rifai il sorteggio</button>
     <button class="r" id="delDraw">Elimina tabellone</button></div>
-    <p class="hint">Clicca sul nome del vincitore di ogni partita e scrivi il punteggio (es. <i>6-4 6-3</i>). Per togliere il vincitore clicca di nuovo sul suo nome. Se modifichi un risultato, quelli dei turni successivi che dipendono da lui vengono azzerati.</p></div>`;
+    <p class="hint">Tocca <b>Inserisci risultato</b> in ogni partita e scrivi i set: il vincitore viene scelto da solo. In alternativa tocca il nome del vincitore per segnarlo senza punteggio (e di nuovo per toglierlo). Se modifichi un risultato, quelli dei turni successivi che dipendono da lui vengono azzerati.</p></div>`;
   if (editMode) html += '<div class="editbar"><b>Modifica sorteggio:</b> clicca un giocatore (o un BYE) nel primo turno e poi un altro per scambiarli di posto: cos&igrave; puoi spostare le teste di serie dove vuoi. Il pulsante <b>T</b> accanto al nome serve a dare, cambiare o togliere il numero di testa di serie; il pulsante <b>&#10548;</b> serve a far entrare il giocatore a un <b>turno diverso dal primo</b> (ottavi, quarti, ecc.). Se ci sono gi&agrave; risultati, quelli delle partite coinvolte vengono azzerati (con conferma).</div>';
   html += '<div class="bracket">';
   d.rounds.forEach((rd, r) => {
@@ -373,13 +525,13 @@ function renderDraw(sex) {
   });
   html += "</div>";
   const fin = d.rounds[d.rounds.length - 1][0];
-  if (fin.w > 0 && pl[fin.w]) html += `<div class="champ">&#127942; Vincitore del singolare ${sexName(sex)}: ${esc(fullName(pl[fin.w]))}</div>`;
-  $("#main").innerHTML = html;
+  if (fin.w > 0 && pl[fin.w]) html += `<div class="champ">&#127942; Vincitore - ${catName(sex)}: ${esc(fullName(pl[fin.w]))}</div>`;
+  setMain(html);
   $("#pdfOne").onclick = () => savePdf(sex);
   $("#editB").onclick = () => { editMode = !editMode; swapSel = null; render(); };
   $("#redo").onclick = async () => {
     if (!confirm("Rifare il sorteggio cancella il tabellone e tutti i risultati inseriti. Continuare?")) return;
-    const j = await act("/api/draw", { sex, seeds: defaultSeeds(n) });
+    const j = await act("/api/draw", { sex, seeds: defaultSeeds(n), fmt: d.fmt || "bo3" });
     if (j) { toast("Nuovo sorteggio fatto"); render(); }
   };
   $("#delDraw").onclick = async () => {
@@ -423,9 +575,9 @@ function renderDraw(sex) {
     const j = await act("/api/result", { sex, round: r, match: mi, winner: m.w === id ? 0 : id });
     if (j) render();
   });
-  document.querySelectorAll(".sc input").forEach(el => el.onchange = async () => {
-    const j = await act("/api/result", { sex, round: +el.dataset.r, match: +el.dataset.m, score: el.value });
-    if (j) toast("Risultato salvato");
+  document.querySelectorAll(".rs").forEach(el => el.onclick = () => {
+    const r = +el.dataset.r, mi = +el.dataset.m;
+    openResult("E", sex, r, mi, d.rounds[r][mi], d.fmt, pl);
   });
 }
 
@@ -498,7 +650,7 @@ function plHtml(id, m, r, i, pl, d, slot) {
 function matchHtml(m, r, i, pl, d) {
   const real = m.a > 0 && m.b > 0;
   return `<div class="match">${plHtml(m.a, m, r, i, pl, d, 2 * i)}${plHtml(m.b, m, r, i, pl, d, 2 * i + 1)}${
-    real && !editMode ? `<div class="sc"><input type="text" placeholder="punteggio" value="${esc(m.score)}" data-r="${r}" data-m="${i}"></div>` : ""}</div>`;
+    real && !editMode ? `<div class="sc"><button class="g rs" data-r="${r}" data-m="${i}">${m.score ? esc(m.score) : "Inserisci risultato"}</button></div>` : ""}</div>`;
 }
 
 /* ---------------- IMPOSTAZIONI ---------------- */
@@ -517,20 +669,47 @@ function renderImp() {
     <div class="card"><h2>Servizio FITP (avanzato)</h2>
       <div class="row"><label class="f" style="flex:1;min-width:360px">Indirizzo del servizio di ricerca giocatori<input type="text" id="sU" value="${esc(S.fitpUrl)}" placeholder="lascia vuoto per usare quello predefinito"></label></div>
       <p class="hint">Serve solo se il portale FITP cambia indirizzo. Il valore predefinito &egrave; quello usato dal sito fitp.it. Si salva con il pulsante Salva qui sopra.</p></div>
+    <div class="card"><h2>Pagina pubblica per i giocatori</h2>
+      <div class="row"><input type="text" id="pubUrl" readonly value="${esc(location.origin + "/pubblico")}" style="flex:1;min-width:240px"><button class="g" id="pubCopy">Copia</button><button class="g" id="pubOpen">Apri</button></div>
+      <p class="hint">Chi ha questo indirizzo vede tabelloni, gironi, risultati e classifica di circolo in sola lettura, <b>senza password</b>, e non pu&ograve; modificare nulla. Si aggiorna da sola ogni 30 secondi. Non mostra note, indirizzi di servizio, credenziali o l&rsquo;elenco degli iscritti non sorteggiati.</p></div>
+    <div class="card"><h2>Backup e ripristino</h2>
+      <div class="row"><button class="b" id="bkGo">Scarica backup</button><button class="g" id="rstGo">Ripristina da backup...</button><input type="file" id="rstFile" accept=".zip,application/zip" style="display:none"></div>
+      <p class="hint">Il backup &egrave; un unico file .zip con iscritti e nomi aggiornati, classifiche FITP con storico, tabelloni, gironi, doppi, risultati, classifica di circolo e ultimo CSV TennisCall. Il ripristino sostituisce i dati attuali (prima ne salva una copia di sicurezza sul disco, nella cartella dati).</p></div>
     <div class="card"><h2>Esporta PDF</h2>
       <div class="row">
-        <button class="b" id="p1">PDF completo (maschile + femminile)</button>
-        <button class="g" id="p2">Solo maschile</button>
-        <button class="g" id="p3">Solo femminile</button>
+        <button class="b" id="p1">PDF completo (tutti i tabelloni)</button>
+        ${CATS.map(c => `<button class="g pdfc" data-c="${c[0]}">${c[1]}</button>`).join("")}
       </div>
       <p class="hint">Il PDF viene salvato nella cartella del programma e si apre da solo (se il programma gira su un server remoto, viene scaricato dal browser). Ogni tabellone &egrave; su una pagina separata.</p></div>
     <div class="card"><h2>Informazioni</h2>
-      <p class="hint">Tutti i dati vengono salvati automaticamente nel file <b>torneo_tc_salemi.json</b>, accanto al programma: alla prossima apertura ritrovi iscritti, tabelloni e risultati. Per ricominciare da zero elimina quel file.</p></div>`;
+      <p class="hint">Tutti i dati vengono salvati automaticamente nei file <b>torneo_tc_salemi.json</b>, <b>classifica_db.json</b> e <b>classifica_circolo.json</b>, accanto al programma (su Render nel disco /data): alla prossima apertura ritrovi iscritti, tabelloni e risultati. Per ricominciare da zero elimina quel file.</p></div>`;
   $("#sv").onclick = async () => {
     const j = await act("/api/settings", { title: $("#sT").value, luogo: $("#sL").value, date: $("#sD").value, fitpUrl: $("#sU").value, tcUrl: $("#sT2").value });
     if (j) { toast("Salvato"); render(); }
   };
-  $("#p1").onclick = () => savePdf("all"); $("#p2").onclick = () => savePdf("M"); $("#p3").onclick = () => savePdf("F");
+  $("#p1").onclick = () => savePdf("all");
+  document.querySelectorAll(".pdfc").forEach(b => b.onclick = () => savePdf(b.dataset.c));
+  $("#pubCopy").onclick = async () => { try { await navigator.clipboard.writeText($("#pubUrl").value); toast("Indirizzo copiato"); } catch (e) { $("#pubUrl").select(); toast("Selezionato: copialo a mano"); } };
+  $("#pubOpen").onclick = () => window.open("/pubblico", "_blank");
+  $("#bkGo").onclick = async () => {
+    const r = await fetch("/api/backup");
+    if (!r.ok) { toast("Backup non riuscito", true); return; }
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "backup_tc_salemi_" + new Date().toISOString().slice(0, 10) + ".zip";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast("Backup scaricato");
+  };
+  $("#rstGo").onclick = () => { $("#rstFile").value = ""; $("#rstFile").click(); };
+  $("#rstFile").onchange = async e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (!confirm("Ripristinare i dati dal file " + f.name + "? I dati attuali verranno sostituiti (ne viene salvata una copia di sicurezza).")) return;
+    const j = await call("/api/restore", f, true);
+    if (j && j.players) { S = j; toast("Backup ripristinato"); render(); }
+  };
 }
 
 async function savePdf(which) {
@@ -540,7 +719,7 @@ async function savePdf(which) {
     const blob = await r.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "TC_Salemi_" + ({ all: "Tabelloni", M: "Tabellone_Maschile", F: "Tabellone_Femminile" }[which] || "Tabellone") + ".pdf";
+    a.download = "TC_Salemi_" + (which === "all" ? "Tabelloni" : "Tabellone_" + which) + ".pdf";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     toast("PDF scaricato");
@@ -677,6 +856,59 @@ async function pollOnce(resume) {
 }
 function startPoll() { wasRunning = true; clearTimeout(pollT); pollOnce(); }
 
+/* ---------------- CLASSIFICA DI CIRCOLO ---------------- */
+function renderCircolo() {
+  const P = S.params, mesi = P.mesi;
+  const list = cView === "interna" ? S.interna : S.circolo;
+  const rowHtml = r => '<div class="crow"><span class="pos">' + r.pos + '</span><span>' + esc(r.nome) + ' <span class="muted">' + esc(r.class) + '</span></span>' +
+    '<span class="cp"><b>' + r.pt12.toFixed(1) + '</b><small>' + r.ptTot.toFixed(1) + ' tot</small></span>' +
+    '<span class="cs">' + r.g + ' giocate, ' + r.v + ' vinte, ' + r.p + ' perse &middot; set ' + r.sv + '-' + r.sp + '</span></div>';
+  let body = "";
+  if (cView === "partite") {
+    const rows = S.ledger.slice().sort((a, b) => String(b.data).localeCompare(String(a.data)));
+    body = rows.length ? rows.map(l => '<div class="lrow"><span class="muted">' + isoIt(l.data) + '</span><span>' + (l.w === 1 ? '<b>' + esc(l.n1) + '</b>' : esc(l.n1)) + ' - ' + (l.w === 2 ? '<b>' + esc(l.n2) + '</b>' : esc(l.n2)) + '</span><span class="pt">' + esc(l.score) + '</span><span class="cs">' + esc(catName(l.cat)) + ' &middot; ' + esc(l.turno) + (l.ex === "wo" ? " &middot; W.O. (0 punti)" : " &middot; punti " + l.pt1.toFixed(1) + " / " + l.pt2.toFixed(1)) + '</span></div>').join("") : '<p class="hint">Nessuna partita registrata.</p>';
+  } else {
+    body = list.length ? list.map(rowHtml).join("") : '<p class="hint">' + (cView === "interna" ? "Nessun giocatore 4.NC / non agonista." : "Nessun risultato ancora: la classifica si forma man mano che inserisci i risultati.") + '</p>';
+  }
+  $("#main").innerHTML = `
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Classifica di circolo</h2><span style="flex:1"></span></div>
+      <div class="chips" style="margin:10px 0 0">
+        <button class="chip ${cView === "circolo" ? "on" : ""}" data-v="circolo">Tutti i giocatori</button>
+        <button class="chip ${cView === "interna" ? "on" : ""}" data-v="interna">Interna 4.NC / non agonisti</button>
+        <button class="chip ${cView === "partite" ? "on" : ""}" data-v="partite">Partite e punti</button>
+      </div>
+      <p class="hint">${cView === "interna" ? "Classifica interna dei giocatori 4.NC o non agonisti: serve anche come spareggio nei sorteggi. " : ""}In grande i punti degli ultimi ${mesi} mesi, sotto il totale di sempre. Si aggiorna a ogni risultato e viene salvata nel file <b>classifica_circolo.json</b> del disco dati.</p>
+      ${cView === "partite" ? "" : '<div style="margin-top:6px">'}${body}${cView === "partite" ? "" : "</div>"}
+    </div>
+    <div class="card">
+      <h2>Calcolo dei punti</h2>
+      <p class="hint" style="margin-top:0">Il vincitore prende da met&agrave; a tutti i punti della vittoria in base ai game vinti; il perdente prende una quota dei punti della sconfitta in base ai game vinti, quindi una sconfitta di misura vale pi&ugrave; di una netta. W.O. = 0 punti per tutti e due e la partita non conta nelle statistiche. Nei doppi i punti vanno a entrambi i giocatori della coppia. <b>Attenzione:</b> TennisCall non pubblica la formula esatta, quindi questa &egrave; un&rsquo;approssimazione costruita sulle sue regole: puoi regolare i valori qui sotto.</p>
+      <div class="row">
+        <label class="f">Punti vittoria (max)<input type="text" inputmode="decimal" id="pV" value="${P.vittoria}" class="cl"></label>
+        <label class="f">Punti sconfitta (max)<input type="text" inputmode="decimal" id="pS" value="${P.sconfitta}" class="cl"></label>
+        <label class="f">Mesi considerati<input type="text" inputmode="numeric" id="pM" value="${P.mesi}" class="cl"></label>
+        <button class="b" id="pSave" style="align-self:flex-end">Salva</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Fine torneo</h2>
+      <p class="hint" style="margin-top:0">&ldquo;Chiudi torneo&rdquo; congela i punti di questo torneo nella classifica di circolo e svuota tabelloni, gironi e coppie, cos&igrave; puoi cominciare il prossimo. Gli iscritti restano. Consiglio: scarica prima un backup da Impostazioni.</p>
+      <button class="r" id="closeT">Chiudi torneo e archivia i punti</button>
+    </div>`;
+  document.querySelectorAll(".chip").forEach(b => b.onclick = () => { cView = b.dataset.v; render(); });
+  $("#pSave").onclick = async () => {
+    const num = id => parseFloat(String($(id).value).replace(",", "."));
+    const j = await act("/api/params", { vittoria: num("#pV"), sconfitta: num("#pS"), mesi: parseInt($("#pM").value, 10) });
+    if (j) { toast("Parametri salvati"); render(); }
+  };
+  $("#closeT").onclick = async () => {
+    if (!confirm("Chiudere il torneo? I punti restano nella classifica di circolo, ma tabelloni, gironi, coppie e risultati vengono eliminati.")) return;
+    const j = await act("/api/torneo/chiudi", {});
+    if (j) { toast("Torneo chiuso: punti archiviati"); render(); }
+  };
+}
+
 /* ---------------- GUIDA ---------------- */
 function renderHelp() {
   $("#main").innerHTML = `
@@ -701,6 +933,14 @@ function renderHelp() {
         <li>Per far entrare un giocatore a un turno successivo servono abbastanza BYE: il programma libera il suo spicchio di tabellone con dei BYE, spostando altrove i giocatori che c&rsquo;erano, e ti dice se non bastano. Se i giocatori sono quanti i posti del tabellone (nessun BYE) non si pu&ograve; saltare nessun turno.</li>
         <li>Il numero della testa di serie resta attaccato al giocatore. Se lo sposti, il suo numero lo segue e il PDF mostra la nuova posizione.</li>
         <li>La modifica viene salvata e finisce anche nel PDF.</li>
+      </ul>
+      <h2 style="margin-top:18px">Doppi, gironi e punteggi</h2>
+      <ul>
+        <li>In <b>Tabelloni</b> scegli la categoria (singolo M/F, doppio M/F, misto). Per i doppi componi prima le coppie con i giocatori spuntati in Iscritti.</li>
+        <li>Per ogni categoria scegli <b>eliminazione diretta</b> o <b>girone all&rsquo;italiana</b> e il formato delle partite: al meglio dei 3 set oppure 2 set con tie-break a 10 al posto del terzo.</li>
+        <li>Il risultato si inserisce per set; ritiro e W.O. si scelgono dal menu &ldquo;Esito&rdquo;. Il vincitore viene scelto da solo.</li>
+        <li><b>Circolo</b> mostra la classifica a punti, quella interna dei 4.NC e l&rsquo;elenco delle partite. Con <b>Chiudi torneo</b> i punti restano archiviati.</li>
+        <li><b>Impostazioni</b> contiene backup, ripristino e l&rsquo;indirizzo della pagina pubblica da dare ai giocatori.</li>
       </ul>
     </div>`;
 }
