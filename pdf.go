@@ -29,9 +29,31 @@ func foldRune(r rune) rune {
 	return 'n'
 }
 
+// isEmojiRune riconosce emoji, simboli e caratteri di servizio (selettori, giunzioni) che i font
+// standard del PDF non possono disegnare.
+func isEmojiRune(r rune) bool {
+	switch {
+	case r >= 0x1F000 && r <= 0x1FAFF,
+		r >= 0x2190 && r <= 0x21FF,
+		r >= 0x2300 && r <= 0x23FF,
+		r >= 0x2460 && r <= 0x24FF,
+		r >= 0x25A0 && r <= 0x27BF,
+		r >= 0x2900 && r <= 0x297F,
+		r >= 0x2B00 && r <= 0x2BFF,
+		r >= 0xFE00 && r <= 0xFE0F,
+		r >= 0xE0000 && r <= 0xE007F,
+		r == 0x200D, r == 0x20E3, r == 0x3030, r == 0x303D, r == 0x3297, r == 0x3299:
+		return true
+	}
+	return false
+}
+
 func textWidth(s string, size float64, bold bool) float64 {
 	w := 0
 	for _, r := range s {
+		if isEmojiRune(r) {
+			continue
+		}
 		r = foldRune(r)
 		if r >= 32 && r <= 126 {
 			w += helv[r-32]
@@ -71,6 +93,8 @@ func toCP1252(s string) string {
 			b = append(b, 0x80)
 		case r == '·' || r == '•':
 			b = append(b, 0xB7)
+		case isEmojiRune(r):
+			// le emoji non esistono nei font del PDF: vengono omesse invece di diventare "?"
 		default:
 			b = append(b, '?')
 		}
