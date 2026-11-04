@@ -541,7 +541,7 @@ func drawRRGroup(pg *page, key string, rr *RR, gi int, stand []Stand, pl map[int
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
 		if curFav != nil && strings.TrimSpace(luogo) != "" {
 			pg.rect(pg.w-28-w-21, 33, 17, 17, 1)
-			pg.favicon(pg.w-28-w-20, 34, 15, 15)
+			pg.favicon(pg.w-28-w-20, 34, 30, 30)
 		}
 	}
 	name := func(id int, maxW, size float64) string {
