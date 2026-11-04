@@ -363,7 +363,7 @@ func drawBracket(pg *page, sex string, d *Draw, pl map[int]*Player, title, date,
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
 		if curFav != nil && strings.TrimSpace(luogo) != "" {
 			pg.rect(pg.w-28-w-21, 33, 17, 17, 1)
-			pg.favicon(pg.w-28-w-20, 34, 30, 30)
+			pg.favicon(pg.w-28-w-20-15, 34-15, 30, 30)
 		}
 	}
 	if d == nil {
