@@ -826,7 +826,7 @@ func restoreZip(data []byte) error {
 // ---------- pagina pubblica ----------
 
 func isPublicPath(p string) bool {
-	return p == "/pubblico" || p == "/pubblico/" || p == "/api/pub" || p == "/logo.png" || p == "/favicon.png" || p == "/favicon.ico"
+	return p == "/pubblico" || p == "/pubblico/" || p == "/api/pub" || p == "/logo.png" || p == "/favicon.png" || p == "/favicon.ico" || p == "/apple-touch-icon.png" || p == "/apple-touch-icon-precomposed.png"
 }
 
 type pubCat struct {
@@ -1074,13 +1074,17 @@ func registerExtra(mux *http.ServeMux) {
 	mux.HandleFunc("/api/favicon", func(w http.ResponseWriter, r *http.Request) { imgUpload(w, r, "favicon.png", 128) })
 	mux.HandleFunc("/api/logo/reset", func(w http.ResponseWriter, r *http.Request) { imgReset(w, r, "tclogo.png") })
 	mux.HandleFunc("/api/favicon/reset", func(w http.ResponseWriter, r *http.Request) { imgReset(w, r, "favicon.png") })
-	favicon := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/png")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Write(faviconBytes())
+	icon := func(ct string, get func() []byte) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", ct)
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Write(get())
+		}
 	}
-	mux.HandleFunc("/favicon.png", favicon)
-	mux.HandleFunc("/favicon.ico", favicon)
+	mux.HandleFunc("/favicon.png", icon("image/png", func() []byte { return faviconPNG(128) }))
+	mux.HandleFunc("/favicon.ico", icon("image/x-icon", faviconICO))
+	mux.HandleFunc("/apple-touch-icon.png", icon("image/png", func() []byte { return faviconPNG(180) }))
+	mux.HandleFunc("/apple-touch-icon-precomposed.png", icon("image/png", func() []byte { return faviconPNG(180) }))
 
 	// backup / ripristino
 	mux.HandleFunc("/api/backup", func(w http.ResponseWriter, r *http.Request) {
@@ -1220,17 +1224,59 @@ func fitSquare(img image.Image, size int) *image.NRGBA {
 	return out
 }
 
-func faviconBytes() []byte {
+// cropLeftSquare ritaglia il quadrato a sinistra di un logo orizzontale (di solito lo stemma).
+func cropLeftSquare(img image.Image) image.Image {
+	b := img.Bounds()
+	h := b.Dy()
+	out := image.NewNRGBA(image.Rect(0, 0, h, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < h; x++ {
+			out.Set(x, y, img.At(b.Min.X+x, b.Min.Y+y))
+		}
+	}
+	return out
+}
+
+// faviconSource: la favicon caricata, oppure il logo (se e' molto largo, solo il quadrato di sinistra,
+// altrimenti scritte e simboli diventerebbero illeggibili a 16 pixel).
+func faviconSource() image.Image {
 	if b, err := os.ReadFile(filepath.Join(dataDir, "favicon.png")); err == nil && len(b) > 0 {
-		return b
+		if img, _, err := image.Decode(bytes.NewReader(b)); err == nil {
+			return img
+		}
 	}
 	if img, _, err := image.Decode(bytes.NewReader(logoBytes())); err == nil {
+		bd := img.Bounds()
+		if bd.Dx() > bd.Dy()*3/2 {
+			return cropLeftSquare(img)
+		}
+		return img
+	}
+	return nil
+}
+
+func faviconPNG(size int) []byte {
+	if img := faviconSource(); img != nil {
 		var buf bytes.Buffer
-		if png.Encode(&buf, fitSquare(img, 128)) == nil {
+		if png.Encode(&buf, fitSquare(img, size)) == nil {
 			return buf.Bytes()
 		}
 	}
 	return logoDefault
+}
+
+func faviconBytes() []byte { return faviconPNG(128) }
+
+// faviconICO impacchetta un PNG in un file .ico (formato accettato da tutti i browser).
+func faviconICO() []byte {
+	const size = 64
+	p := faviconPNG(size)
+	n, off := uint32(len(p)), uint32(22)
+	var b bytes.Buffer
+	b.Write([]byte{0, 0, 1, 0, 1, 0, size, size, 0, 0, 1, 0, 32, 0})
+	b.Write([]byte{byte(n), byte(n >> 8), byte(n >> 16), byte(n >> 24), byte(off), byte(off >> 8), byte(off >> 16), byte(off >> 24)})
+	b.Write(p)
+	return b.Bytes()
 }
 
 func imgUpload(w http.ResponseWriter, r *http.Request, name string, square int) {

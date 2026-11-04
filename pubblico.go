@@ -8,8 +8,9 @@ const pubHTML = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Torneo TC Salemi</title>
-<link rel="icon" type="image/png" href="/favicon.png">
-<link rel="apple-touch-icon" href="/favicon.png">
+<link rel="icon" type="image/png" sizes="128x128" href="/favicon.png?v=2">
+<link rel="shortcut icon" href="/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <style>
 :root{--bg:#f3f5f4;--card:#fff;--ink:#1c2420;--mut:#6b756f;--line:#d5dbd8;--acc:#1f6b45;--acc2:#e8f3ec;--win:#d6efd9}
 *{box-sizing:border-box}

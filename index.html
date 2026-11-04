@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Torneo Sociale</title>
-<link rel="icon" type="image/png" href="/favicon.png">
-<link rel="apple-touch-icon" href="/favicon.png">
+<link rel="icon" type="image/png" sizes="128x128" href="/favicon.png?v=2">
+<link rel="shortcut icon" href="/favicon.ico?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <style>
 :root{--bg:#f3f5f4;--card:#fff;--ink:#1c2420;--mut:#6b756f;--line:#d5dbd8;--acc:#1f6b45;--acc2:#e8f3ec;--warn:#b45309;--win:#d6efd9}
 *{box-sizing:border-box}
@@ -777,7 +778,7 @@ function renderImp() {
     const v = Date.now();
     document.querySelectorAll('img[src^="/logo.png"]').forEach(i => { i.src = "/logo.png?v=" + v; i.style.display = ""; });
     document.querySelectorAll('img[src^="/favicon.png"]').forEach(i => { i.src = "/favicon.png?v=" + v; });
-    document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l => { l.href = "/favicon.png?v=" + v; });
+    document.querySelectorAll('link[rel$="icon"]').forEach(l => { l.href = l.getAttribute("href").split("?")[0] + "?v=" + v; });
   };
   const upImg = (btn, inp, url) => {
     $(btn).onclick = () => { $(inp).value = ""; $(inp).click(); };
