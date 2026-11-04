@@ -361,10 +361,9 @@ func drawBracket(pg *page, sex string, d *Draw, pl map[int]*Player, title, date,
 	if right != "" {
 		w := textWidth(right, 10, false)
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
-		if curFav != nil && strings.TrimSpace(luogo) != "" {
-			const icon = 30.0
-			pg.rect(pg.w-28-w-icon-6, 14, icon+4, icon+4, 1)
-			pg.favicon(pg.w-28-w-icon-4, 16, icon, icon)
+	if curFav != nil && strings.TrimSpace(luogo) != "" {
+    	pg.rect(pg.w-28-w-36, 26, 32, 32, 1)
+	    pg.favicon(pg.w-28-w-34, 28, 30, 30)
 		}
 	}
 	if d == nil {
@@ -541,8 +540,8 @@ func drawRRGroup(pg *page, key string, rr *RR, gi int, stand []Stand, pl map[int
 		w := textWidth(right, 10, false)
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
 		if curFav != nil && strings.TrimSpace(luogo) != "" {
-			pg.rect(pg.w-28-w-21, 33, 17, 17, 1)
-			pg.favicon(pg.w-28-w-20, 34, 30, 30)
+    		pg.rect(pg.w-28-w-36, 26, 32, 32, 1)
+    		pg.favicon(pg.w-28-w-34, 28, 30, 30)
 		}
 	}
 	name := func(id int, maxW, size float64) string {
