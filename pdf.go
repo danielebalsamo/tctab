@@ -147,6 +147,14 @@ type pdfImg struct {
 type pdfDoc struct {
 	pages []*page
 	logo  *pdfImg
+	fav   *pdfImg
+}
+
+// curFav e' la favicon del circolo, disegnata accanto al nome nell'intestazione (impostata da buildPDF).
+var curFav *pdfImg
+
+func (p *page) favicon(x, y, w, h float64) {
+	fmt.Fprintf(&p.b, "q %.2f 0 0 %.2f %.2f %.2f cm /Im2 Do Q\n", w, h, x, p.h-y-h)
 }
 
 func (p *page) image(x, y, w, h float64) {
@@ -234,16 +242,30 @@ func (d *pdfDoc) bytes() []byte {
 	for i, f := range []string{"Helvetica", "Helvetica-Bold", "Helvetica-Oblique"} {
 		obj(fmt.Sprintf("%d 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /%s /Encoding /WinAnsiEncoding >>\nendobj\n", 3+i, f))
 	}
+	logoID := 6 + 2*len(d.pages)
+	favID := logoID
+	if d.logo != nil {
+		favID++
+		if d.logo.Mask != nil {
+			favID++
+		}
+	}
 	for i, p := range d.pages {
 		res := "/Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>"
+		xo := ""
 		if d.logo != nil {
-			res += fmt.Sprintf(" /XObject << /Im1 %d 0 R >>", 6+2*len(d.pages))
+			xo += fmt.Sprintf(" /Im1 %d 0 R", logoID)
+		}
+		if d.fav != nil {
+			xo += fmt.Sprintf(" /Im2 %d 0 R", favID)
+		}
+		if xo != "" {
+			res += " /XObject <<" + xo + " >>"
 		}
 		obj(fmt.Sprintf("%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.0f %.0f] /Resources << %s >> /Contents %d 0 R >>\nendobj\n", 6+2*i, p.w, p.h, res, 7+2*i))
 		obj(fmt.Sprintf("%d 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n", 7+2*i, p.b.Len(), p.b.String()))
 	}
-	if im := d.logo; im != nil {
-		id := 6 + 2*len(d.pages)
+	writeImg := func(id int, im *pdfImg) {
 		sm := ""
 		if im.Mask != nil {
 			sm = fmt.Sprintf(" /SMask %d 0 R", id+1)
@@ -256,6 +278,12 @@ func (d *pdfDoc) bytes() []byte {
 			out.Write(im.Mask)
 			out.WriteString("\nendstream\nendobj\n")
 		}
+	}
+	if d.logo != nil {
+		writeImg(logoID, d.logo)
+	}
+	if d.fav != nil {
+		writeImg(favID, d.fav)
 	}
 	xref := out.Len()
 	fmt.Fprintf(&out, "xref\n0 %d\n0000000000 65535 f \n", len(offs)+1)
@@ -333,6 +361,10 @@ func drawBracket(pg *page, sex string, d *Draw, pl map[int]*Player, title, date,
 	if right != "" {
 		w := textWidth(right, 10, false)
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
+		if curFav != nil && strings.TrimSpace(luogo) != "" {
+			pg.rect(pg.w-28-w-21, 33, 17, 17, 1)
+			pg.favicon(pg.w-28-w-20, 34, 15, 15)
+		}
 	}
 	if d == nil {
 		pg.text(28, 110, 12, stItalic, 0.3, "Tabellone non ancora sorteggiato.")
@@ -449,6 +481,11 @@ func buildPDF(which string) ([]byte, error) {
 	} else if im, err := loadLogo(logoDefault); err == nil {
 		doc.logo = im
 	}
+	curFav = nil
+	if fi, err := loadLogo(faviconBytes()); err == nil {
+		doc.fav = fi
+		curFav = fi
+	}
 	pl := map[int]*Player{}
 	for i := range st.Players {
 		pl[st.Players[i].ID] = &st.Players[i]
@@ -502,6 +539,10 @@ func drawRRGroup(pg *page, key string, rr *RR, gi int, stand []Stand, pl map[int
 	if right != "" {
 		w := textWidth(right, 10, false)
 		pg.text(pg.w-28-w, 47, 10, stNormal, 0.85, right)
+		if curFav != nil && strings.TrimSpace(luogo) != "" {
+			pg.rect(pg.w-28-w-21, 33, 17, 17, 1)
+			pg.favicon(pg.w-28-w-20, 34, 15, 15)
+		}
 	}
 	name := func(id int, maxW, size float64) string {
 		p := pl[id]
